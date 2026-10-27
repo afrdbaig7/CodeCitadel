@@ -1,0 +1,30 @@
+{
+  "name": "@codecitadel/store",
+  "version": "0.1.0",
+  "private": true,
+  "description": "R2 local-first control plane: stateful task index, immutable manifest, and SQLite-backed store",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "migrate": "node --import tsx/esm dist/migrate.js"
+  },
+  "dependencies": {
+    "@codecitadel/contracts": "workspace:*",
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0"
+  }
+}
