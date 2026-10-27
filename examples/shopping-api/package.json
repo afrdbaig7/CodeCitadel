@@ -1,0 +1,27 @@
+{
+  "name": "codecitadel-example-shopping-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Demo shopping API with a deliberately vulnerable coupon redemption flow",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "test": "vitest run test/",
+    "test:reproduction": "vitest run reproductions/",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "node src/migrate-cli.ts",
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "fastify": "5.12.7",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/pg": "8.15.6",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}

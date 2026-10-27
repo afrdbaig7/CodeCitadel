@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "requirements": [
+    {
+      "id": "coupon.single-redemption",
+      "statement": "A coupon can be redeemed only once per user.",
+      "state": "accepted",
+      "checks": [
+        {
+          "id": "coupon-first-use",
+          "file": "test/coupon.test.ts",
+          "name": "coupon redemption a user redeems a coupon once"
+        },
+        {
+          "id": "coupon-repeated-use",
+          "file": "test/coupon.test.ts",
+          "name": "coupon redemption a repeated redemption is rejected"
+        },
+        {
+          "id": "coupon-concurrent-use",
+          "file": "reproductions/coupon-race.test.ts",
+          "name": "coupon concurrent redemptions by one user redeem the coupon once"
+        }
+      ],
+      "acceptance": {
+        "acceptedAt": "2026-10-26T05:10:20.772Z",
+        "acceptedBy": "afreed",
+        "digest": "sha256:b145f0b05b07d1076f108564ba3e8bb3eefb9dffff2b72b696ad1159d4774ea1"
+      }
+    }
+  ]
+}

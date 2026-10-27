@@ -1,0 +1,65 @@
+--- a/src/coupons.ts
++++ b/src/coupons.ts
+@@ -14,11 +14,9 @@
+  * The accepted rule this fixture is about: a coupon can be redeemed at most once
+  * per user.
+  *
+- * DELIBERATELY VULNERABLE. The check and the insert are two separate statements
+- * with no transaction isolation above `read committed` and no uniqueness
+- * constraint behind them. Two requests that both run the check before either
+- * insert both see "not redeemed yet" and both insert, so a single user can
+- * redeem one coupon twice. The fix is a composite unique constraint on
+- * `redemptions (user_id, coupon_id)` plus conflict handling in this function,
+- * not a longer lock here; the demonstration is what proves that.
++ * FIXED. The check and the insert are still two statements, but the database now
++ * holds a composite unique constraint on `redemptions (user_id, coupon_id)`, so
++ * the second of two concurrent inserts is refused by the index rather than
++ * accepted. The insert uses `on conflict ... do nothing`, and "nothing was
++ * inserted" is answered the same way a repeated call is.
+  */
+@@ -44,14 +42,18 @@
+
+   await demoHoldAtCheckInsertBoundary();
+
+   const inserted = await pool.query<{ id: string }>(
+-    "insert into redemptions (user_id, coupon_id) values ($1, $2) returning id",
++    `insert into redemptions (user_id, coupon_id) values ($1, $2)
++       on conflict (user_id, coupon_id) do nothing
++       returning id`,
+     [input.userId, couponRow.id],
+   );
+   const insertedRow = inserted.rows[0];
+   if (insertedRow === undefined) {
+-    throw new Error("The redemption insert returned no row.");
++    // The unique index refused a concurrent second redemption: this request
++    // lost the race, so it is answered the same way a repeated call is.
++    return { status: "already_redeemed" };
+   }
+
+   return { status: "redeemed", redemptionId: insertedRow.id };
+ }
+--- /dev/null
++++ b/migrations/002_coupon_single_redemption.sql
+@@ -0,0 +1,22 @@
++-- The application check cannot stop two concurrent inserts from both passing:
++-- that is the race the reproduction reports. The constraint belongs here,
++-- where the database serializes them.
++--
++-- Existing duplicates are removed explicitly rather than silently: the earliest
++-- redemption (by redeemed_at, then by id) is kept, and every later one for the
++-- same user and coupon is deleted, so the unique index can be created.
++
++with ranked as (
++  select id,
++         row_number() over (
++           partition by user_id, coupon_id
++           order by redeemed_at, id
++         ) as position
++    from redemptions
++)
++delete from redemptions r
++  using ranked k
++ where r.id = k.id and k.position > 1;
++
++create unique index redemptions_one_per_user_coupon
++  on redemptions (user_id, coupon_id);

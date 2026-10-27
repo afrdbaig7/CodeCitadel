@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "reproductions": [
+    {
+      "id": "coupon.concurrent-redemption",
+      "requirement": "coupon.single-redemption",
+      "statement": "Concurrent redemptions of one coupon by one user redeem the coupon once.",
+      "provenance": "user-authored",
+      "file": "reproductions/coupon-race.test.ts",
+      "test": "coupon concurrent redemptions by one user redeem the coupon once"
+    }
+  ]
+}
