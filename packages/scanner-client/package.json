@@ -1,0 +1,23 @@
+{
+  "name": "@codecitadel/scanner-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript boundary for the Rust scanner: binary resolution, subprocess, protocol validation",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@codecitadel/contracts": "workspace:*",
+    "zod": "4.0.5"
+  }
+}
