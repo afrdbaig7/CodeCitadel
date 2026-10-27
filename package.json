@@ -1,0 +1,32 @@
+{
+  "name": "codecitadel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Change verification: what changed, what could break, and what evidence do we have.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:scanner": "cargo test --workspace",
+    "scanner:build": "cargo build --release --package scanner-cli",
+    "scanner:package": "node scripts/package-scanner.mjs",
+    "verify:pack": "node scripts/verify-pack.mjs",
+    "notices": "node scripts/third-party-notices.mjs",
+    "docs:check": "node scripts/docs-check.mjs",
+    "docs:check:strict": "node scripts/docs-check.mjs --strict",
+    "docs:self-test": "node scripts/docs-check.mjs --self-test",
+    "fixtures": "node apps/cli/dist/index.js scan fixtures/security --format json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "turbo": "2.5.8",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}

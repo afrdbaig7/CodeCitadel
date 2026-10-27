@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+dist/
+.turbo/
+target/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+coverage/
+.codecitadel/
+
+# Local-only documentation and study notes (not tracked in remote repo)
+docs/study/
+docs/learning/
+docs/adr/

@@ -1,0 +1,18 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  # `packages/store` is a suspended experiment: its manifests describe tasks and
+  # resources, its source does not compile, and its tests describe an API it does
+  # not have. It is kept on disk for reference but excluded from the workspace so
+  # it cannot break installs, builds, or CI. `packages/storage` is the evidence
+  # store this project actually uses.
+  - "!packages/store"
+  # Prebuilt scanner binaries, one package per supported target. They are built
+  # by `node scripts/package-scanner.mjs` and selected at runtime by platform.
+  - "npm/*"
+
+# pnpm blocks dependency lifecycle scripts by default and only runs the ones
+# listed here. esbuild is the single exception: its postinstall verifies the
+# platform binary that Vite/Vitest need. Adding an entry is a reviewed decision.
+allowBuilds:
+  esbuild: true
