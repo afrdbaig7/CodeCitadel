@@ -1,0 +1,14 @@
+{
+  "name": "@codecitadel/scanner-darwin-arm64",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prebuilt CodeCitadel scanner binary for macOS arm64",
+  "license": "Apache-2.0",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "files": ["bin", "binary.json"],
+  "exports": {
+    "./binary.json": "./binary.json"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@codecitadel/scanner-win32-x64",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prebuilt CodeCitadel scanner binary for Windows x64",
+  "license": "Apache-2.0",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "files": ["bin", "binary.json"],
+  "exports": {
+    "./binary.json": "./binary.json"
+  }
+}
