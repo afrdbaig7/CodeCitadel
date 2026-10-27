@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "requirements": [
+    {
+      "id": "coupon.single-redemption",
+      "statement": "A coupon can be redeemed only once per user.",
+      "state": "proposed",
+      "checks": [
+        {
+          "id": "coupon-first-use",
+          "file": "src/coupon.test.ts",
+          "name": "coupon > a user redeems a coupon once"
+        },
+        {
+          "id": "coupon-repeated-use",
+          "file": "src/coupon.test.ts",
+          "name": "coupon > a repeated redemption is rejected"
+        }
+      ],
+      "acceptance": null
+    },
+    {
+      "id": "token.expiry-boundary",
+      "statement": "An expired token is rejected at and after its expiry instant.",
+      "state": "proposed",
+      "checks": [
+        {
+          "id": "token-at-expiry",
+          "file": "src/token.test.ts",
+          "name": "token > rejects a token at its expiry instant"
+        }
+      ],
+      "acceptance": null
+    }
+  ]
+}
