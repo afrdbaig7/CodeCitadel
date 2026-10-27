@@ -1,0 +1,35 @@
+{
+  "name": "@codecitadel/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CodeCitadel command line interface",
+  "bin": {
+    "codecitadel": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@codecitadel/contracts": "workspace:*",
+    "@codecitadel/core": "workspace:*",
+    "@codecitadel/executor": "workspace:*",
+    "@codecitadel/scanner-client": "workspace:*",
+    "@codecitadel/symbol-graph": "workspace:*",
+    "commander": "14.0.0"
+  },
+  "optionalDependencies": {
+    "@codecitadel/scanner-darwin-arm64": "workspace:*",
+    "@codecitadel/scanner-linux-x64": "workspace:*",
+    "@codecitadel/scanner-win32-x64": "workspace:*"
+  }
+}
