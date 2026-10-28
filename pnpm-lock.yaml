@@ -53,6 +53,13 @@ importers:
       commander:
         specifier: 14.0.0
         version: 14.0.0
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
+    devDependencies:
+      '@codecitadel/api':
+        specifier: workspace:*
+        version: link:../api
     optionalDependencies:
       '@codecitadel/scanner-darwin-arm64':
         specifier: workspace:*
@@ -64,14 +71,29 @@ importers:
         specifier: workspace:*
         version: link:../../npm/scanner-win32-x64
 
-  npm/scanner-darwin-arm64: {}
+  npm/scanner-darwin-arm64:
+    dependencies:
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
 
-  npm/scanner-linux-x64: {}
+  npm/scanner-linux-x64:
+    dependencies:
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
 
-  npm/scanner-win32-x64: {}
+  npm/scanner-win32-x64:
+    dependencies:
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
 
   packages/contracts:
     dependencies:
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
       zod:
         specifier: 4.0.5
         version: 4.0.5
@@ -84,12 +106,18 @@ importers:
       '@codecitadel/scanner-client':
         specifier: workspace:*
         version: link:../scanner-client
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
 
   packages/executor:
     dependencies:
       '@codecitadel/contracts':
         specifier: workspace:*
         version: link:../contracts
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
       zod:
         specifier: 4.0.5
         version: 4.0.5
@@ -99,6 +127,9 @@ importers:
       '@codecitadel/contracts':
         specifier: workspace:*
         version: link:../contracts
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
       zod:
         specifier: 4.0.5
         version: 4.0.5
@@ -108,12 +139,18 @@ importers:
       '@codecitadel/contracts':
         specifier: workspace:*
         version: link:../contracts
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
 
   packages/symbol-graph:
     dependencies:
       '@codecitadel/contracts':
         specifier: workspace:*
         version: link:../contracts
+      fastify:
+        specifier: 5.12.7
+        version: 5.12.7
       typescript:
         specifier: 5.9.2
         version: 5.9.2

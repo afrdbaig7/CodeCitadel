@@ -96,21 +96,38 @@ the `demo coupon-race` command.
 
 **Gate:** the coupon race demo reproduces a real failure on a real database, the
 exported test runs without CodeCitadel, and a labeled patch is verified against
-the unchanged original reproduction. Two of the three acts now have their
-mechanics on any project: a declared check reproduces and exports so that it
-runs with only the project's own Vitest, and `patch verify` judges an explicit
-patch in a copy. What the gate still needs is the real database demonstration
-and a proposal that comes from the pipeline rather than from the operator.
+the unchanged original reproduction. Evidence bundles then travel, tamper-evidently,
+from one machine to another and replay with a declared environment.
+
+**Consumers of evidence now exist:** the CLI can upload a stored report to the
+local control plane (`codecitadel upload`), which validates and stores it and
+serves it back per tenant with artifact digest headers. The CLI/MVP story is
+complete; the hosted story is still R2.
 
 ## R2 — Hosted dashboard beta
 
-Requires: NestJS/Fastify API, PostgreSQL/Drizzle, private object storage, OIDC
-identity, organizations and permissions, explicit report upload, and real UI
-views. The CLI/user CI executes checks; the server validates, authorizes, stores,
-and displays evidence.
+The CLI/user CI executes checks; the server validates, authorizes, stores, and
+displays evidence. The local control plane exists (SQLite), and the CLI side of
+report upload is complete. The hosted story is left to the checklist below.
 
-**Gate:** cross-tenant access denied in automated tests; uploaded evidence is
-labelled with its execution origin and never presented as managed execution.
+**This milestone's checklist:**
+
+- [ ] **8F — report upload on the CLI.** `codecitadel upload` sends a stored
+      report to a local control plane and reads it back; 8 e2e tests pass.
+- [ ] **8G — PostgreSQL/Drizzle storage.** new `ReportStore` driver behind the
+      same interface; `storage.driver: "postgres"` on the health route;
+      migrations recorded in `packages/storage/src/db-postgres.ts`.
+- [ ] **8H — private object storage.** full artifacts leave the store;
+      `storage.driver: "s3"` behind an explicit flag.
+- [ ] **8I — established OIDC identity.** bearer tokens rotate behind an
+      identity provider; plaintext tokens are a local-plane detail, not a
+      hosted platform property.
+- [ ] **8J — organizations, permissions, and the first UI views.** four
+      dashboard workspaces; read-only views of stored runs.
+
+**Gate for the checklist:** cross-tenant access denied in automated tests;
+uploaded evidence is labelled with its execution origin and never presented as
+managed execution. The control plane obeyed that gate in the SQLite edition.
 
 ## R3 — GitHub workflow and community release
 

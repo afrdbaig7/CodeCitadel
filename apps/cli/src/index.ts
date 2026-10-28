@@ -44,6 +44,7 @@ import {
 } from "./commands/requirements.js";
 import { runRunCommand, type RunCommandOptions } from "./commands/run.js";
 import { runScanCommand, type ScanCommandOptions } from "./commands/scan.js";
+import { runUploadCommand, type UploadCommandOptions } from "./commands/upload.js";
 import { UsageError } from "./errors.js";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "info", "none"];
@@ -302,6 +303,37 @@ function buildProgram(setExitCode: (code: number) => void): Command {
     .option("-f, --format <format>", "output format: text or json", "text")
     .action(async (bundleArgument: string, pathArgument: string | undefined, options: ReplayCommandOptions) => {
       setExitCode(await runReplayCommand(bundleArgument, pathArgument, options));
+    });
+
+  program
+    .command("upload")
+    .description(
+      "Upload a stored report to a CodeCitadel control plane. Reads one file and sends it; executes nothing.",
+    )
+    .argument("<report>", "stored report file written by a codecitadel command")
+    .requiredOption(
+      "--server <url>",
+      "base URL of the control plane, for example http://127.0.0.1:4317",
+    )
+    .option("--token <value>", "bearer token (defaults to the CODECITADEL_TOKEN environment variable)")
+    .option("--kind <kind>", "report kind, when the file does not match exactly one contract")
+    .option(
+      "--repository <name>",
+      "repository to file the report under (defaults to the report's own root directory name)",
+    )
+    .option("--commit <ref>", "commit the report was captured at")
+    .option("--branch <name>", "branch the report was captured on")
+    .option("--origin <origin>", 'who executed the checks: "local" (default) or "user-ci"')
+    .option(
+      "--artifact <file>",
+      "small evidence file to send with the report (repeatable)",
+      (value: string, previous: string[]) => [...previous, value],
+      [],
+    )
+    .option("--timeout-ms <ms>", "give up after this many milliseconds (default 60000)")
+    .option("-f, --format <format>", "output format: text or json", "text")
+    .action(async (reportArgument: string, options: UploadCommandOptions) => {
+      setExitCode(await runUploadCommand(reportArgument, options));
     });
 
   program

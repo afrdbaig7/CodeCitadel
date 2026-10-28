@@ -5,10 +5,20 @@
   "type": "module",
   "description": "Prebuilt CodeCitadel scanner binary for Linux x64",
   "license": "Apache-2.0",
-  "os": ["linux"],
-  "cpu": ["x64"],
-  "files": ["bin", "binary.json"],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin",
+    "binary.json"
+  ],
   "exports": {
     "./binary.json": "./binary.json"
+  },
+  "dependencies": {
+    "fastify": "5.12.7"
   }
 }

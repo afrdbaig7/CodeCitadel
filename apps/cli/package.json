@@ -13,7 +13,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -25,11 +27,15 @@
     "@codecitadel/executor": "workspace:*",
     "@codecitadel/scanner-client": "workspace:*",
     "@codecitadel/symbol-graph": "workspace:*",
-    "commander": "14.0.0"
+    "commander": "14.0.0",
+    "fastify": "5.12.7"
   },
   "optionalDependencies": {
     "@codecitadel/scanner-darwin-arm64": "workspace:*",
     "@codecitadel/scanner-linux-x64": "workspace:*",
     "@codecitadel/scanner-win32-x64": "workspace:*"
+  },
+  "devDependencies": {
+    "@codecitadel/api": "workspace:*"
   }
 }
