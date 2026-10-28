@@ -21,6 +21,26 @@ there. The reports state where they ran and what they did not establish.
 > [`docs/progress.md`](docs/progress.md) and
 > [`docs/support-matrix.md`](docs/support-matrix.md) for exactly what exists.
 
+## Why CodeCitadel: Beyond AI Slop Detection
+
+As more code is authored by LLMs (ChatGPT, Claude, Copilot), repositories face a surge of **"AI Slop"**:
+- **Careless Security Smells:** Disabling TLS (`rejectUnauthorized: false`), passing `{ shell: true }` to child processes, hardcoded API credentials.
+- **Silent Failure Patterns:** Empty `catch {}` blocks swallowing errors, forgotten `// TODO` markers, mock data left in production.
+- **Cheating "Fixes":** When an AI is asked to fix a failing test, it often cheats by adding `// @ts-ignore`, commenting out assertions, or marking tests as `.skip()`.
+
+CodeCitadel begins with high-speed native Rust detection of these patterns, but goes further. A traditional linter can only say *"this looks sloppy."* It cannot answer:
+1. *Did this change actually break existing behavior?*
+2. *Which parts of the codebase are impacted?*
+3. *Does a proposed fix genuinely repair the contract, or does it cheat to pass tests?*
+
+CodeCitadel answers: **"What changed, what could break, and what evidence do we have?"**
+
+| Pillar | What it does | Why it defeats AI Slop |
+| --- | --- | --- |
+| **Impact Analysis** | Traces TypeScript imports and routes (`file → caller → test`) | Identifies the exact test suite that can observe the change—no blind guessing. |
+| **Weakening Detection** | Scans proposed diffs for evasion tactics | Blocks patches that cheat by dropping assertions, suppressing diagnostics, or skipping tests. |
+| **Behavioral Verification** | Executes tests in disposable copies under supervised timeouts | Provides cryptographic, reproducible proof that a fix works before it touches your checkout. |
+
 ## What it does
 
 - Discovers files with Git-compatible ignore rules (`.gitignore`,
