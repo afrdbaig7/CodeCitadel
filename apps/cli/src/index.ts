@@ -44,6 +44,7 @@ import {
 } from "./commands/requirements.js";
 import { runRunCommand, type RunCommandOptions } from "./commands/run.js";
 import { runScanCommand, type ScanCommandOptions } from "./commands/scan.js";
+import { runServeCommand, type ServeCommandOptions } from "./commands/serve.js";
 import { runUploadCommand, type UploadCommandOptions } from "./commands/upload.js";
 import { UsageError } from "./errors.js";
 
@@ -334,6 +335,27 @@ function buildProgram(setExitCode: (code: number) => void): Command {
     .option("-f, --format <format>", "output format: text or json", "text")
     .action(async (reportArgument: string, options: UploadCommandOptions) => {
       setExitCode(await runUploadCommand(reportArgument, options));
+    });
+
+  program
+    .command("serve")
+    .description(
+      "Start the local evidence API, serve the dashboard, and open it in your browser. Executes nothing.",
+    )
+    .option("--port <port>", "listen port", "4317")
+    .option("--host <host>", "bind address; loopback only by design", "127.0.0.1")
+    .option("--data-dir <dir>", "SQLite database and artifact directory (or artifact directory with PostgreSQL)", ".codecitadel/server")
+    .option("--database-url <url>", "PostgreSQL connection string (or CODECITADEL_DATABASE_URL)")
+    .option("--max-db-connections <count>", "PostgreSQL pool size (default: 5, maximum: 100)")
+    .option("--organization <slug>", "organization the local token belongs to", "local")
+    .option("--token <value>", "use this bearer token instead of generating one")
+    .option(
+      "--dashboard <dir>",
+      "built dashboard directory to serve (default: apps/dashboard/dist when present)",
+    )
+    .option("--no-open", "do not open a browser")
+    .action(async (options: ServeCommandOptions) => {
+      setExitCode(await runServeCommand(options));
     });
 
   program

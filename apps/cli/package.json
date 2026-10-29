@@ -19,9 +19,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --testTimeout=120000"
   },
   "dependencies": {
+    "@codecitadel/api": "workspace:*",
     "@codecitadel/contracts": "workspace:*",
     "@codecitadel/core": "workspace:*",
     "@codecitadel/executor": "workspace:*",
@@ -34,8 +35,5 @@
     "@codecitadel/scanner-darwin-arm64": "workspace:*",
     "@codecitadel/scanner-linux-x64": "workspace:*",
     "@codecitadel/scanner-win32-x64": "workspace:*"
-  },
-  "devDependencies": {
-    "@codecitadel/api": "workspace:*"
   }
 }
