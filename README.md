@@ -116,7 +116,11 @@ an AI provider.
 - It does not invent a reproduction. `reproduce run` executes a check you wrote
   and declared; it does not generate one from a finding, shrink it, or repeat it
   to measure flakiness. One run is one observation.
-- It has no hosted service, dashboard, database, or authentication.
+- It has no hosted service. `codecitadel serve` starts a loopback-only control
+  plane with a SQLite store and serves the dashboard, when one has been built;
+  the browser authenticates with a same-site cookie carrying an ephemeral local
+  token, and nothing in the dashboard executes repository code. Hosted
+  multi-tenant identity, Postgres, and object storage are still R2 work.
 - It does not claim FixMySlop parity. Upstream FixMySlop parity audit complete: all 58 upstream rules, options, and server architectures cataloged in [`docs/parity.md`](docs/parity.md).
 
 ## Prerequisites
@@ -162,6 +166,10 @@ node apps/cli/dist/index.js run . --base .codecitadel/root.json --out .codecitad
 # change the code (say, a fix), run again, and compare the stored reports:
 node apps/cli/dist/index.js run . --base .codecitadel/root.json --out .codecitadel/run-after.json --format json
 node apps/cli/dist/index.js compare --before .codecitadel/run-before.json --after .codecitadel/run-after.json
+
+# start the local evidence API and serve the dashboard (prints the token it issues)
+pnpm --filter @codecitadel/dashboard build   # once; the CLI serves apps/dashboard/dist
+node apps/cli/dist/index.js serve --no-open
 ```
 
 As an installed release (no Rust; proven by `pnpm verify:pack`):
@@ -260,6 +268,15 @@ codecitadel reproduce export <report>  write the test source and its provenance
   --force                   overwrite an existing file at the destination
   --in-root                 allow writing inside the analyzed checkout
   -f, --format <format>     text (default) or json
+
+codecitadel serve           start the local evidence API and the dashboard; opens a browser
+  --port <port>           listen port (default: 4317)
+  --host <host>           bind address (default: 127.0.0.1; loopback by design)
+  --data-dir <dir>        SQLite database and artifacts (default: .codecitadel/server)
+  --organization <slug>   organization the local token belongs to
+  --token <value>         use this bearer token instead of generating one
+  --dashboard <dir>       built dashboard to serve (default: apps/dashboard/dist)
+  --no-open               do not open a browser
 
 codecitadel doctor          environment, binary, and protocol checks
   -f, --format <format>    text (default) or json
