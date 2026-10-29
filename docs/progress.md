@@ -1,13 +1,14 @@
 # Progress
 
-Last updated: 2026-10-27 — R2 slice 8F (report upload to the control plane).
+Last updated: 2026-10-28 — R2 slice 8G (PostgreSQL/Drizzle storage).
 
-## Milestone: Phase 0, R0 gate, R1 slices 1–8, R2 slice 8F (report upload)
+## Milestone: Phase 0, R0 gate, R1 slices 1–8, R2 slices 8F–8G (local workbench and PostgreSQL storage)
 
 R1 slices 1–8 are done (snapshots + diff, impact, run, compare, requirements,
 patch verification, reproduction + export, coupon demo, evidence export & replay)
-and R2 slice 8F completes the first client side of the control plane: the CLI can
-upload a stored report, the server validates, authorizes, stores, and returns it.
+and R2 slices 8F–8G complete the local evidence loop: the CLI can upload a stored
+report, the server validates, authorizes, stores, and returns it through SQLite
+or an explicitly configured PostgreSQL/Drizzle store.
 Everything that runs repository code does so inside a disposable copy (or, for
 uploads, inside the operator's own checkout — uploads do not copy anything).
 
@@ -54,8 +55,9 @@ uploads, inside the operator's own checkout — uploads do not copy anything).
 | Evidence bundle replay (`codecitadel replay`): strict pre-execution schema/digest/size/env checks, isolated re-execution in disposable copy, confirmed/diverged verdict | `packages/core/test/evidence.test.ts` (7 tests), `apps/cli/test/evidence.e2e.test.ts` (5 tests) |
 | Packed CLI installable outside the monorepo (win32-x64) | `scripts/verify-pack.mjs` → 21 checks, all passing |
 | Evidence upload to the control plane: `codecitadel upload`, CLI interop test against the real Fastify server | `apps/cli/test/upload.e2e.test.ts` (8 tests) + real end-to-end round trip (stored report, read back byte-identical, artifact digest header verified) |
-| Local control plane: Fastify API/SSE-less, bearer-token auth, tenant-scoped runs, artifact artifact, 8 MiB upload limit | `apps/api` (Fastify 5.12.7, SQLite), `apps/api/test/api.test.ts` (35+ tests) |
-| Study documentation: index with reading paths and 9 reviewed flow chapters (scan, requirements+patch, evidence+replay, demo, reproduction+export, impact, execution comparison, accepted requirements, snapshots+diffs, packaging) | `docs/study/` + `docs/study/coverage-report.md`; `pnpm docs:check` clean |
+| Local control plane: Fastify API, bearer-token auth, tenant-scoped runs and artifacts, 8 MiB upload limit | `apps/api` (Fastify 5.12.7), `apps/api/test/api.test.ts` (35+ tests) |
+| PostgreSQL storage: bounded `pg` pool, Drizzle schema, serialized transactional migrations, tenant-scoped run/artifact operations | `packages/storage/src/db-postgres.ts`, `packages/storage/src/postgres-store.ts`; 4 storage + 3 API real PostgreSQL integration tests |
+| Study documentation: index with reading paths and reviewed flow chapters | `docs/study/`; current `pnpm docs:check` has 1 broken link and 1 stale CLI source hash (pre-existing documentation drift) |
 
 ### Commands run (actual results)
 
@@ -95,21 +97,58 @@ Verified by `apps/cli/test/upload.e2e.test.ts` (8 tests) against the real
 `apps/api/dist/main.js` and by a hand-run round trip (stored → detail → artifact
 all read back over HTTP, report identical, artifact byte-identical).
 
-## R2 slice 8G — Postgres-backed control plane (pending)
+## R2 slice 8F.1 — local dashboard workbench
 
-The control plane is currently SQLite-only. PostgreSQL changes the schema story:
-Drizzle migrations, tenant-aware pooling, and the `storage.driver: "postgres"`
-health field. The CLI does not change.
+`codecitadel serve` starts the same Fastify app the API binary builds, through the
+shared `startLocalServer` in `apps/api/src/local.ts`, serves the prebuilt
+dashboard from `apps/dashboard/dist`, and opens it in a browser. The CLI and the
+browser share one ephemeral token: the server sets it as an HttpOnly,
+SameSite=Strict cookie when it serves the page, so no credential goes in a URL.
+A request under `/assets` is resolved against the built directory and refused
+when it escapes it.
+
+The dashboard has four workspaces. Repository health shows a severity-weighted
+score, counters, a category-filtered findings table, and the selected rule's
+explanation and remediation. Changes and impact shows the file tree, a unified
+diff, backwards reachability from a changed file to its callers and test files,
+and accepted requirements with their digest and staleness. Verification reads
+stored runs from the API, shows per-test results with durations and `t_`
+fingerprints, and inspects a reproduction and its evidence bundles. Repairs shows
+a candidate patch, the weakening signals found in it, and the before/after test
+matrix.
+
+Nothing is fabricated: fixture-backed views are labeled "preview dataset", and a
+stored run's per-test detail is fetched from its own report instead of being
+derived from the outcome. Verified by `apps/cli/test/serve.e2e.test.ts` (6 tests:
+cookie session, unauthenticated refusal, printed token, asset content type and
+traversal refusal, port conflict) and a hand-run `serve` against the real built
+dashboard (`/` 200 with `Set-Cookie`, `/assets/*.js` 200, `/api/v1/runs` 401
+without the cookie and 200 with it, `..` escape 404).
+
+## R2 slice 8G — Postgres-backed control plane
+
+`PostgresReportStore` implements the shared async-capable `EvidenceStore` while
+SQLite remains the default. Set `CODECITADEL_DATABASE_URL` or pass
+`--database-url`; `--max-db-connections` bounds the per-process `pg.Pool` (1–100,
+default 5). Drizzle provides typed PostgreSQL schema metadata; ordered SQL
+migrations are serialized by a transaction-scoped advisory lock and recorded in
+`schema_migrations`. The health response reports `storage.driver: "postgres"`
+and the migration version. Report JSON remains in PostgreSQL; artifact bytes
+remain in the configured local artifact directory, so this does not complete the
+separate S3/object-storage slice.
+
+Verified against PostgreSQL 16 in Docker: four storage integration tests cover
+migration idempotency, token hashing, report/artifact round-trip and tenant
+isolation, plus concurrent repository reuse; three API integration tests cover
+health metadata, upload/list/detail/artifact retrieval and cross-tenant denial.
 
 ## Next task (in order)
 
-1. **R2 slice 8G: PostgreSQL/Drizzle storage driver** — same `ReportStore`
-   interface, new `storage.driver: "postgres"` health field, migrations recorded
-   in `packages/storage/src/db-postgres.ts`.
-2. **R2 slice 8H: private object storage** — S3-compatible upload of full
+1. **R2 slice 8H: private object storage** — S3-compatible upload of full
    artifacts, with the API contract telling clients it is not the default yet.
-3. **R2 slice 8I: established OIDC identity** — bearer tokens are now plaintext
+2. **R2 slice 8I: established OIDC identity** — bearer tokens are now plaintext
    forever; an identity provider swap is the only way the platform can ever
    rotate a tenant's keys.
-4. **R2 slice 8J: organizations, permissions, and the first UI views** — four
-   workspaces for the dashboard, and read-only views for the stored runs.
+3. **R2 slice 8J: hosted organizations and permissions** — the four local
+   workspaces exist; the hosted deployment still needs multi-tenant identity,
+   per-run permissions, and Postgres/object storage behind them.

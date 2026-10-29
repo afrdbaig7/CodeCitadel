@@ -1,6 +1,6 @@
 # Support matrix
 
-Updated 2026-10-23. A capability is listed as implemented only when there is
+Updated 2026-10-28. A capability is listed as implemented only when there is
 automated evidence in this repository.
 
 ## Capabilities
@@ -52,7 +52,9 @@ automated evidence in this repository.
 | Verification of a patch against a stored run (disposable copy, weakening detection, requirement regression check) | implemented | `packages/executor/src/diff-parse.ts` + `packages/executor/src/patch.ts`, `packages/core/src/patch-verification.ts`, `apps/cli/test/patch.e2e.test.ts` (5 e2e tests) + 16 core + 13 executor unit tests |
 | Mutation testing (StrykerJS) | planned | — |
 | Patch proposals and apply action | planned | — |
-| Local API / dashboard | planned | — |
+| Local API (`codecitadel upload` target, bearer token, tenant-scoped reads) | implemented | `apps/api/src/server.ts`, `apps/api/test/api.test.ts`, `apps/cli/test/upload.e2e.test.ts` (8 e2e tests) |
+| Local dashboard workbench (`codecitadel serve`, four workspaces, same-origin cookie session) | implemented (local only; prebuilt static assets, no hosted identity) | `apps/dashboard/src/`, `apps/api/src/local.ts`, `apps/cli/test/serve.e2e.test.ts` (6 e2e tests) |
+| PostgreSQL/Drizzle storage driver (explicit URL, bounded pool, ordered migrations, tenant-scoped access) | implemented (PostgreSQL 16) | `packages/storage/src/db-postgres.ts`, `packages/storage/src/postgres-store.ts`; storage integration tests (4) and API integration tests (3) |
 | GitHub Action, MCP server, AI providers | planned | — |
 | Prebuilt scanner binary in a per-platform package | implemented (win32-x64 artifact only) | `scripts/package-scanner.mjs`, `npm/scanner-win32-x64` |
 | Platform-package resolution with SHA-256 verification | implemented | `resolve-binary.test.ts` (valid, tampered, missing manifest, path escape) |

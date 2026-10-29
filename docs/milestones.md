@@ -112,18 +112,25 @@ report upload is complete. The hosted story is left to the checklist below.
 
 **This milestone's checklist:**
 
-- [ ] **8F — report upload on the CLI.** `codecitadel upload` sends a stored
+- [x] **8F — report upload on the CLI.** `codecitadel upload` sends a stored
       report to a local control plane and reads it back; 8 e2e tests pass.
-- [ ] **8G — PostgreSQL/Drizzle storage.** new `ReportStore` driver behind the
-      same interface; `storage.driver: "postgres"` on the health route;
-      migrations recorded in `packages/storage/src/db-postgres.ts`.
+- [x] **8F.1 — local dashboard workbench.** `codecitadel serve` serves the
+      built dashboard on loopback, sets one ephemeral token as a same-site
+      cookie, and the four workspaces read stored runs (or a labeled preview
+      dataset). 6 serve e2e tests pass.
+- [x] **8G — PostgreSQL/Drizzle storage.** `PostgresReportStore` implements
+      the shared `EvidenceStore`; `storage.driver: "postgres"` and the applied
+      migration version appear on health; ordered migrations live in
+      `packages/storage/src/db-postgres.ts`. Real PostgreSQL storage/API suites
+      pass (7 integration tests).
 - [ ] **8H — private object storage.** full artifacts leave the store;
       `storage.driver: "s3"` behind an explicit flag.
 - [ ] **8I — established OIDC identity.** bearer tokens rotate behind an
       identity provider; plaintext tokens are a local-plane detail, not a
       hosted platform property.
-- [ ] **8J — organizations, permissions, and the first UI views.** four
-      dashboard workspaces; read-only views of stored runs.
+- [ ] **8J — hosted organizations, permissions, and identity.** the four local
+      workspaces exist; the hosted deployment still needs multi-tenant identity,
+      per-run permissions, and Postgres/object storage behind them.
 
 **Gate for the checklist:** cross-tenant access denied in automated tests;
 uploaded evidence is labelled with its execution origin and never presented as
