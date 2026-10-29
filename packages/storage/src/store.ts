@@ -60,6 +60,20 @@ export interface ReadArtifact {
   digest: string;
 }
 
+/** Shared API boundary: SQLite stays synchronous; PostgreSQL operations are async. */
+export interface EvidenceStore {
+  readonly schemaVersion: number;
+  readonly driver: "sqlite" | "postgres";
+  ensureOrganization(slug: string): Organization | Promise<Organization>;
+  issueToken(input: IssueTokenInput): void | Promise<void>;
+  authenticate(token: string): Organization | null | Promise<Organization | null>;
+  insertRun(input: InsertRunInput): StoredRun | Promise<StoredRun>;
+  listRuns(organizationId: string, limit?: number): StoredRun[] | Promise<StoredRun[]>;
+  getRun(organizationId: string, runId: string): StoredRunDetail | null | Promise<StoredRunDetail | null>;
+  readArtifact(organizationId: string, runId: string, name: string): ReadArtifact | null | Promise<ReadArtifact | null>;
+  close(): void | Promise<void>;
+}
+
 function id(prefix: string): string {
   return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 }
@@ -74,7 +88,8 @@ function tokenHash(token: string): string {
  * row rather than a forbidden one — the caller cannot learn that an id exists
  * elsewhere.
  */
-export class ReportStore {
+export class ReportStore implements EvidenceStore {
+  readonly driver = "sqlite" as const;
   readonly schemaVersion: number;
   private readonly db: DatabaseSync;
   private readonly artifactsDir: string;
