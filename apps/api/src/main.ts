@@ -1,16 +1,14 @@
 #!/usr/bin/env node
-import { randomBytes } from "node:crypto";
 import path from "node:path";
 
-import { API_SCHEMA_VERSION } from "@codecitadel/contracts";
-import { ReportStore } from "@codecitadel/storage";
-
-import { buildServer } from "./index.js";
+import { startLocalServer } from "./local.js";
 
 interface StartOptions {
   port: number;
   host: string;
   dataDir: string;
+  databaseUrl: string | undefined;
+  maxDatabaseConnections: number;
   organizationSlug: string;
   token: string | undefined;
 }
@@ -20,6 +18,8 @@ function parseArgs(argv: readonly string[]): StartOptions {
     port: 4317,
     host: "127.0.0.1",
     dataDir: path.resolve(".codecitadel", "server"),
+    databaseUrl: process.env.CODECITADEL_DATABASE_URL,
+    maxDatabaseConnections: 5,
     organizationSlug: "local",
     token: undefined,
   };
@@ -41,6 +41,22 @@ function parseArgs(argv: readonly string[]): StartOptions {
           throw new Error("--data-dir needs a path.");
         }
         options.dataDir = path.resolve(value);
+        index += 1;
+        break;
+      }
+      case "--database-url": {
+        if (value === undefined || value.trim() === "") {
+          throw new Error("--database-url needs a PostgreSQL connection string.");
+        }
+        options.databaseUrl = value;
+        index += 1;
+        break;
+      }
+      case "--max-db-connections": {
+        if (value === undefined || !/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 100) {
+          throw new Error("--max-db-connections must be an integer from 1 to 100.");
+        }
+        options.maxDatabaseConnections = Number.parseInt(value, 10);
         index += 1;
         break;
       }
@@ -66,11 +82,14 @@ function parseArgs(argv: readonly string[]): StartOptions {
             "Usage: codecitadel-server [options]",
             "",
             "  --port <n>            listen port (default 4317)",
-            "  --data-dir <dir>      SQLite database and artifacts (default .codecitadel/server)",
+            "  --data-dir <dir>      SQLite database and artifact directory (PostgreSQL artifacts use this directory)",
+            "  --database-url <url>  PostgreSQL connection string (or CODECITADEL_DATABASE_URL)",
+            "  --max-db-connections <n>  PostgreSQL pool size (default: 5)",
             "  --organization <slug> organization the token belongs to (default local)",
             "  --token <value>       use this bearer token instead of generating one",
             "",
             "Binds to 127.0.0.1 only: this is a local control plane, not a hosted service.",
+            "For the dashboard, use `codecitadel serve` in the CLI.",
             "",
           ].join("\n"),
         );
@@ -95,29 +114,28 @@ async function main(): Promise<number> {
     return 2;
   }
 
-  const store = new ReportStore({
-    file: path.join(options.dataDir, "evidence.db"),
-    artifactsDir: path.join(options.dataDir, "artifacts"),
-  });
-  const organization = store.ensureOrganization(options.organizationSlug);
-  const token = options.token ?? `cc_${randomBytes(24).toString("hex")}`;
-  store.issueToken({ organizationId: organization.id, token, label: "local operator" });
-
-  const app = buildServer({ store });
+  let server;
   try {
-    await app.listen({ port: options.port, host: options.host });
+    server = await startLocalServer({
+      port: options.port,
+      host: options.host,
+      dataDir: options.dataDir,
+      ...(options.databaseUrl === undefined ? {} : { databaseUrl: options.databaseUrl }),
+      maxDatabaseConnections: options.maxDatabaseConnections,
+      organizationSlug: options.organizationSlug,
+      ...(options.token === undefined ? {} : { token: options.token }),
+    });
   } catch (error) {
-    store.close();
-    process.stderr.write(`codecitadel-server: cannot listen: ${(error as Error).message}\n`);
+    process.stderr.write(`codecitadel-server: cannot start: ${(error as Error).message}\n`);
     return 2;
   }
 
   process.stdout.write(
     [
-      `codecitadel local API ${API_SCHEMA_VERSION} listening on http://${options.host}:${options.port}`,
-      `organization ${organization.slug} (${organization.id})`,
-      `token ${token}`,
-      `data ${path.join(options.dataDir, "evidence.db")}`,
+      `codecitadel local API ${server.schemaVersion} listening on ${server.url}`,
+      `organization ${server.organization.slug} (${server.organization.id})`,
+      `token ${server.token}`,
+      `storage ${options.databaseUrl === undefined ? "sqlite" : "postgres"} · ${server.dataFile}`,
       "This is a local control plane. It validates and stores uploaded evidence; it does not execute code.",
       options.token === undefined ? "" : "(--token was provided, so a new token was also issued.)",
       "",
@@ -127,8 +145,7 @@ async function main(): Promise<number> {
   );
 
   const shutdown = async (): Promise<void> => {
-    await app.close();
-    store.close();
+    await server.close();
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown());
