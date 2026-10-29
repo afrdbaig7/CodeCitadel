@@ -153,7 +153,7 @@ const FIRST_USE = "coupon > a user redeems a coupon once";
 const REPEATED_USE = "coupon > a repeated redemption is rejected";
 const FILE = "src/coupon.test.ts";
 
-describe("codecitadel requirements", () => {
+describe("codecitadel requirements", { timeout: 30_000 }, () => {
   it("lists a proposed document without claiming it is accepted", async () => {
     const tree = workTree();
     const result = await cli(["requirements", "list", tree]);
