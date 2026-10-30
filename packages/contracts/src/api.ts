@@ -23,7 +23,9 @@ export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 /** Artifacts per upload, and bytes per artifact. */
 export const MAX_ARTIFACTS = 32;
-export const MAX_ARTIFACT_BYTES = 1024 * 1024;
+export const MAX_ARTIFACT_BYTES = 64 * 1024 * 1024;
+export const INLINE_ARTIFACT_BYTES = 1024 * 1024;
+export const MAX_REPORT_BYTES = 8 * 1024 * 1024;
 
 /**
  * Who executed the checks. `local` is the developer's machine, `user-ci` is the
@@ -89,9 +91,8 @@ export const reportUploadSchema = z.strictObject({
   /** Validated against `reportSchemaFor(kind)` by the server, not here. */
   report: z.unknown(),
   /**
-   * Optional small artifacts (traces, raw reporter output). Each digest is
-   * checked against the decoded bytes; large evidence belongs in object storage,
-   * which hosted mode adds.
+   * Optional inline artifacts (traces, raw reporter output), capped at the inline
+   * threshold. Larger files are uploaded directly to private object storage.
    */
   artifacts: z
     .array(
@@ -163,15 +164,17 @@ export const healthResponseSchema = z.strictObject({
   status: z.literal("ok"),
   storage: z.strictObject({
     driver: z.enum(["sqlite", "postgres"]),
+    artifactDriver: z.enum(["filesystem", "s3"]),
     schemaVersion: z.number().int().nonnegative(),
   }),
   limits: z.strictObject({
     maxUploadBytes: z.number().int().positive(),
     maxArtifacts: z.number().int().positive(),
     maxArtifactBytes: z.number().int().positive(),
+    inlineArtifactBytes: z.number().int().positive(),
   }),
   /** What this deployment does not do, printed with every health check. */
-  limitations: z.array(z.string().min(1)).min(1),
+  limitations: z.array(z.string().min(1)),
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
