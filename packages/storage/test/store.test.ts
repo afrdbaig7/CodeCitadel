@@ -45,11 +45,11 @@ describe("ReportStore migrations", () => {
   it("applies the history once and reopens at the same version", () => {
     const file = storeFile("migrate");
     const first = new ReportStore({ file, artifactsDir: path.join(scratch, "m1") });
-    expect(first.schemaVersion).toBe(1);
+    expect(first.schemaVersion).toBe(2);
     first.close();
 
     const second = new ReportStore({ file, artifactsDir: path.join(scratch, "m1") });
-    expect(second.schemaVersion).toBe(1);
+    expect(second.schemaVersion).toBe(2);
     second.close();
   });
 });
@@ -60,7 +60,7 @@ describe("tokens", () => {
     const org = store.ensureOrganization("acme");
     store.issueToken({ organizationId: org.id, token: "cc_secret_one", label: "ci" });
 
-    expect(store.authenticate("cc_secret_one")).toEqual(org);
+    expect(store.authenticate("cc_secret_one")).toEqual({ ...org, role: "admin", issuer: null, subject: null });
     expect(store.authenticate("cc_secret_two")).toBeNull();
     store.close();
   });

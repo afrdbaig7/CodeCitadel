@@ -56,20 +56,20 @@ describePostgres("PostgresReportStore (real PostgreSQL integration)", () => {
 
   it("applies PostgreSQL migration version 1 and reopens idempotently", async () => {
     expect(store.driver).toBe("postgres");
-    expect(store.schemaVersion).toBe(1);
+    expect(store.schemaVersion).toBe(2);
     const reopened = await PostgresReportStore.open({
       connectionString: connectionString!,
       artifactsDir: path.join(scratch, "reopen-artifacts"),
       maxConnections: 1,
     });
-    expect(reopened.schemaVersion).toBe(1);
+    expect(reopened.schemaVersion).toBe(2);
     await reopened.close();
   });
 
   it("hashes bearer tokens and resolves the authenticated organization", async () => {
     const token = `cc_integration_${suffix}`;
     await store.issueToken({ organizationId: organization.id, token, label: "integration" });
-    expect(await store.authenticate(token)).toEqual(organization);
+    expect(await store.authenticate(token)).toEqual({ ...organization, role: "admin", issuer: null, subject: null });
     expect(await store.authenticate(`${token}_wrong`)).toBeNull();
   });
 
