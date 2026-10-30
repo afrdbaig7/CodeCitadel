@@ -61,6 +61,7 @@ export const postgresSchema = {
       .notNull()
       .references(() => organizationsTable.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
+    role: text("role").notNull().default("admin"),
     createdAt: text("created_at").notNull(),
   }),
   repositories: repositoriesTable,
@@ -79,6 +80,7 @@ export const postgresSchema = {
       digest: text("digest").notNull(),
       bytes: integer("bytes").notNull(),
       relativePath: text("relative_path").notNull(),
+      storageDriver: text("storage_driver").notNull().default("filesystem"),
     },
     (table) => [uniqueIndex("artifacts_by_run_name").on(table.runId, table.name)],
   ),
@@ -93,6 +95,14 @@ export const POSTGRES_MIGRATIONS: readonly (readonly string[])[] = [
     `create table runs (id text primary key, organization_id text not null references organizations(id) on delete cascade, repository_id text not null references repositories(id) on delete cascade, kind text not null, origin text not null, commit_ref text, branch_ref text, captured_at text not null, received_at text not null, report_digest text not null, report_json text not null, outcome text, bytes integer not null)`,
     `create index runs_by_tenant on runs (organization_id, received_at desc)`,
     `create table artifacts (id text primary key, organization_id text not null references organizations(id) on delete cascade, run_id text not null references runs(id) on delete cascade, name text not null, digest text not null, bytes integer not null, relative_path text not null, unique (run_id, name))`,
+  ],
+  [
+    `alter table api_tokens add column role text not null default 'admin'`,
+    `alter table artifacts add column storage_driver text not null default 'filesystem'`,
+    `create table oidc_memberships (id text primary key, organization_id text not null references organizations(id) on delete cascade, issuer text not null, subject text not null, role text not null check (role in ('read_only','upload','admin')), created_at text not null, unique (organization_id, issuer, subject))`,
+    `create index oidc_memberships_by_identity on oidc_memberships (issuer, subject)`,
+    `create table audit_events (id text primary key, organization_id text not null references organizations(id) on delete cascade, actor text not null, action text not null, target text not null, created_at text not null)`,
+    `create index audit_events_by_tenant on audit_events (organization_id, created_at desc)`,
   ],
 ];
 
