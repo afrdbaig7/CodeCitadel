@@ -314,7 +314,7 @@ describe("codecitadel upload e2e", () => {
     expect(refusedName.stderr).toContain("not a portable artifact name");
 
     const oversized = path.join(scratch, "big.txt");
-    writeFileSync(oversized, "x".repeat(1024 * 1024 + 1), "utf8");
+    writeFileSync(oversized, Buffer.alloc(64 * 1024 * 1024 + 1));
     const refusedSize = await cli([
       "upload",
       reportPath,
