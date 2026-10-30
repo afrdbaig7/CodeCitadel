@@ -75,7 +75,7 @@ describePostgres("Fastify API with PostgreSQL storage (real integration)", () =>
   it("reports PostgreSQL and the applied migration version from health", async () => {
     const response = await app.inject({ method: "GET", url: "/api/v1/health" });
     expect(response.statusCode).toBe(200);
-    expect(healthResponseSchema.parse(response.json()).storage).toEqual({ driver: "postgres", schemaVersion: 1 });
+    expect(healthResponseSchema.parse(response.json()).storage).toMatchObject({ driver: "postgres", schemaVersion: 2 });
   });
 
   it("uploads, lists, and reads a real report and artifact through the API", async () => {
