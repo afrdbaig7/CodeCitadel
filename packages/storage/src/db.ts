@@ -9,24 +9,17 @@ import { DatabaseSync } from "node:sqlite";
  * portable, and the contract tests are what the two implementations share.
  */
 export const MIGRATIONS: readonly string[] = [
-  `create table if not exists schema_migrations (
-     version integer primary key,
-     applied_at text not null
-   );
-
-   create table if not exists organizations (
+  `create table if not exists organizations (
      id text primary key,
      slug text not null unique,
      created_at text not null
    );
-
    create table if not exists api_tokens (
      token_hash text primary key,
      organization_id text not null references organizations(id) on delete cascade,
      label text not null,
      created_at text not null
    );
-
    create table if not exists repositories (
      id text primary key,
      organization_id text not null references organizations(id) on delete cascade,
@@ -34,7 +27,6 @@ export const MIGRATIONS: readonly string[] = [
      created_at text not null,
      unique (organization_id, name)
    );
-
    create table if not exists runs (
      id text primary key,
      organization_id text not null references organizations(id) on delete cascade,
@@ -50,9 +42,7 @@ export const MIGRATIONS: readonly string[] = [
      outcome text,
      bytes integer not null
    );
-
    create index if not exists runs_by_tenant on runs (organization_id, received_at desc);
-
    create table if not exists artifacts (
      id text primary key,
      organization_id text not null references organizations(id) on delete cascade,
@@ -63,6 +53,27 @@ export const MIGRATIONS: readonly string[] = [
      relative_path text not null,
      unique (run_id, name)
    );`,
+  `alter table api_tokens add column role text not null default 'admin';
+   alter table artifacts add column storage_driver text not null default 'filesystem';
+   create table if not exists oidc_memberships (
+     id text primary key,
+     organization_id text not null references organizations(id) on delete cascade,
+     issuer text not null,
+     subject text not null,
+     role text not null check (role in ('read_only','upload','admin')),
+     created_at text not null,
+     unique (organization_id, issuer, subject)
+   );
+   create index if not exists oidc_memberships_by_identity on oidc_memberships (issuer, subject);
+   create table if not exists audit_events (
+     id text primary key,
+     organization_id text not null references organizations(id) on delete cascade,
+     actor text not null,
+     action text not null,
+     target text not null,
+     created_at text not null
+   );
+   create index if not exists audit_events_by_tenant on audit_events (organization_id, created_at desc);`,
 ];
 
 export interface OpenedDatabase {
