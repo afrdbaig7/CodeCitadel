@@ -3,8 +3,10 @@ import { readFile } from "node:fs/promises";
 import {
   API_SCHEMA_VERSION,
   EXIT_CODES,
+  INLINE_ARTIFACT_BYTES,
   MAX_ARTIFACTS,
   MAX_ARTIFACT_BYTES,
+  MAX_REPORT_BYTES,
   MAX_UPLOAD_BYTES,
   apiErrorSchema,
   payloadDigest,
@@ -28,6 +30,7 @@ import {
 export interface UploadCommandOptions {
   server?: string;
   token?: string;
+  organization?: string;
   kind?: string;
   repository?: string;
   commit?: string;
@@ -187,15 +190,9 @@ async function prepareArtifacts(files: readonly string[]): Promise<PreparedArtif
       throw new UsageError(`Cannot read the artifact at ${file}: ${(error as Error).message}`);
     }
     if (bytes.length > MAX_ARTIFACT_BYTES) {
-      throw new UsageError(
-        `The artifact ${file} is ${formatBytes(bytes.length)}, more than the per-artifact limit of ${formatBytes(MAX_ARTIFACT_BYTES)}.`,
-      );
+      throw new UsageError(`The artifact ${file} is ${formatBytes(bytes.length)}, more than the per-artifact limit of ${formatBytes(MAX_ARTIFACT_BYTES)}.`);
     }
-    prepared.push({
-      name,
-      digest: payloadDigest(bytes),
-      contentBase64: bytes.toString("base64"),
-    });
+    prepared.push({ name, digest: payloadDigest(bytes), contentBase64: bytes.toString("base64") });
   }
   return prepared;
 }
@@ -251,6 +248,10 @@ export async function runUploadCommand(
   const format = parseFormat(options.format);
   const url = controlPlaneUrl(options.server);
   const token = bearerToken(options.token);
+  const organization = options.organization?.trim();
+  if (organization !== undefined && !/^[a-z0-9][a-z0-9-]{1,62}$/.test(organization)) {
+    throw new UsageError("--organization must be a 2-63 character lowercase organization slug.");
+  }
   const origin = uploadOrigin(options.origin);
   const timeoutMs = parsePositiveInt(options.timeoutMs ?? `${DEFAULT_TIMEOUT_MS}`, "--timeout-ms");
 
@@ -296,14 +297,22 @@ export async function runUploadCommand(
     );
   }
 
-  const body = JSON.stringify(envelope.data);
+  const preparedByName = new Map(artifacts.map((artifact) => [artifact.name, artifact]));
+  const inlineArtifacts = envelope.data.artifacts.filter((artifact) => {
+    const prepared = preparedByName.get(artifact.name);
+    return prepared !== undefined && Buffer.byteLength(prepared.contentBase64, "base64") <= INLINE_ARTIFACT_BYTES;
+  });
+  const envelopeBody = { ...envelope.data, artifacts: inlineArtifacts };
+  const large = (options.artifact ?? []).flatMap((file) => {
+    const name = artifactName(file);
+    const prepared = preparedByName.get(name);
+    if (prepared === undefined) return [];
+    const bytes = Buffer.from(prepared.contentBase64, "base64");
+    return bytes.length > INLINE_ARTIFACT_BYTES ? [{ file, name, bytes, digest: prepared.digest }] : [];
+  });
+  const body = JSON.stringify(envelopeBody);
   const bytes = Buffer.byteLength(body, "utf8");
-  if (bytes > MAX_UPLOAD_BYTES) {
-    throw new UsageError(
-      `The upload is ${formatBytes(bytes)}, more than the limit of ${formatBytes(MAX_UPLOAD_BYTES)}. ` +
-        "Leave large artifacts out: the report describes them, and a control plane is not a file host.",
-    );
-  }
+  if (bytes > MAX_UPLOAD_BYTES) throw new UsageError(`The report upload is ${formatBytes(bytes)}, more than ${formatBytes(MAX_UPLOAD_BYTES)}.`);
 
   const endpoint = new URL(ENDPOINT_PATH, url);
   let response: Response;
@@ -314,6 +323,7 @@ export async function runUploadCommand(
         "content-type": "application/json",
         accept: "application/json",
         authorization: `Bearer ${token}`,
+        ...(organization === undefined ? {} : { "x-codecitadel-organization": organization }),
       },
       body,
       signal: AbortSignal.timeout(timeoutMs),
@@ -348,10 +358,37 @@ export async function runUploadCommand(
     );
   }
 
+  const run = stored.data.run;
+  for (const artifact of large) {
+    const initiate = await fetch(new URL(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts/${encodeURIComponent(artifact.name)}/upload`, controlPlaneRoot(url)), {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...(organization === undefined ? {} : { "x-codecitadel-organization": organization }) },
+      body: JSON.stringify({ digest: artifact.digest, bytes: artifact.bytes.length }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const signed = await initiate.json() as { url?: string; headers?: Record<string, string>; key?: string; error?: { message?: string } };
+    if (!initiate.ok || typeof signed.url !== "string" || typeof signed.key !== "string" || signed.headers === undefined) {
+      throw new UsageError(`The control plane could not prepare artifact ${artifact.name}: ${signed.error?.message ?? initiate.statusText}.`);
+    }
+    let put: Response;
+    try { put = await fetch(signed.url, { method: "PUT", headers: signed.headers, body: artifact.bytes, signal: AbortSignal.timeout(timeoutMs) }); }
+    catch (error) { throw new UsageError(`Cannot upload artifact ${artifact.name} to object storage: ${(error as Error).message}`); }
+    if (!put.ok) throw new UsageError(`The object store refused artifact ${artifact.name} (${put.status} ${put.statusText}).`);
+    const complete = await fetch(new URL(`/api/v1/runs/${encodeURIComponent(run.id)}/artifacts/${encodeURIComponent(artifact.name)}/complete`, controlPlaneRoot(url)), {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...(organization === undefined ? {} : { "x-codecitadel-organization": organization }) },
+      body: JSON.stringify({ key: signed.key, digest: artifact.digest, bytes: artifact.bytes.length }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!complete.ok) {
+      const problem = apiErrorSchema.safeParse(safeJson(await complete.text()));
+      throw new UsageError(`The control plane did not finalize artifact ${artifact.name} (${complete.status}): ${problem.success ? problem.data.error.message : complete.statusText}.`);
+    }
+  }
   process.stdout.write(
     format === "json"
-      ? `${JSON.stringify(stored.data, null, 2)}\n`
-      : renderUploadText(url, stored.data.run),
+      ? `${JSON.stringify({ ...stored.data, run: { ...run, artifacts: [...run.artifacts, ...large.map((artifact) => ({ name: artifact.name, digest: artifact.digest, bytes: artifact.bytes.length }))] } }, null, 2)}\n`
+      : renderUploadText(url, { ...run, artifacts: [...run.artifacts, ...large.map((artifact) => ({ name: artifact.name, digest: artifact.digest, bytes: artifact.bytes.length }))] }),
   );
   return EXIT_CODES.ok;
 }

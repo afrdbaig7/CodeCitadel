@@ -317,6 +317,7 @@ function buildProgram(setExitCode: (code: number) => void): Command {
       "base URL of the control plane, for example http://127.0.0.1:4317",
     )
     .option("--token <value>", "bearer token (defaults to the CODECITADEL_TOKEN environment variable)")
+    .option("--organization <slug>", "organization slug for hosted OIDC identities with multiple memberships")
     .option("--kind <kind>", "report kind, when the file does not match exactly one contract")
     .option(
       "--repository <name>",
