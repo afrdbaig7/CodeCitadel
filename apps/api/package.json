@@ -25,7 +25,8 @@
   "dependencies": {
     "@codecitadel/contracts": "workspace:*",
     "@codecitadel/storage": "workspace:*",
-    "fastify": "5.12.7"
+    "fastify": "5.12.7",
+    "jose": "^6.2.13"
   },
   "devDependencies": {
     "@types/pg": "8.23.1",
