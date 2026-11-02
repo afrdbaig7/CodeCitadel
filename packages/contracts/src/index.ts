@@ -13,3 +13,4 @@ export * from "./demo.js";
 export * from "./sarif.js";
 export * from "./evidence.js";
 export * from "./mutation.js";
+export * from "./managed.js";

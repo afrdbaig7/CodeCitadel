@@ -10,6 +10,7 @@ import { codeCitadelReportSchema } from "./report.js";
 import { reproductionReportSchema } from "./reproduction.js";
 import { requirementsEvaluationSchema } from "./requirements.js";
 import { snapshotDiffSchema } from "./snapshot.js";
+import { mutationReportSchema } from "./mutation.js";
 
 /**
  * HTTP contract version. The routes are versioned in the path (`/api/v1`), and
@@ -52,6 +53,7 @@ export const reportKindSchema = z.enum([
   "patch-verification",
   "requirements-evaluation",
   "reproduction",
+  "mutation",
 ]);
 export type ReportKind = z.infer<typeof reportKindSchema>;
 
@@ -64,6 +66,7 @@ const SCHEMAS: Record<ReportKind, z.ZodType> = {
   "patch-verification": patchVerificationReportSchema,
   "requirements-evaluation": requirementsEvaluationSchema,
   reproduction: reproductionReportSchema,
+  mutation: mutationReportSchema,
 };
 
 /** The contract an upload of this kind must satisfy. */
@@ -123,12 +126,15 @@ export const storedRunSchema = z.strictObject({
   }),
   kind: reportKindSchema,
   origin: evidenceOriginSchema,
+  status: z
+    .enum(["queued", "running", "completed", "failed", "cancelled"])
+    .default("completed"),
   capturedAt: z.iso.datetime(),
   receivedAt: z.iso.datetime(),
   reportDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
   /** One short statement about the report's own verdict, or null when it has none. */
   outcome: z.string().nullable(),
-  bytes: z.number().int().positive(),
+  bytes: z.number().int().nonnegative(),
   artifacts: z.array(
     z.strictObject({
       name: artifactNameSchema,
@@ -242,6 +248,12 @@ export function outcomeOf(kind: ReportKind, report: unknown): string | null {
     }
     case "reproduction":
       return typeof value.verdict === "string" ? value.verdict : null;
+    case "mutation": {
+      const summary = value.summary as { mutationScore?: number } | undefined;
+      return typeof summary?.mutationScore === "number"
+        ? `${summary.mutationScore.toFixed(1)}% score`
+        : null;
+    }
     default:
       return null;
   }
