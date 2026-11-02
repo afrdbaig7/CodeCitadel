@@ -295,6 +295,51 @@ A `2` is never a clean result. Neither is a report whose `scope.truncated` is
 `true`, nor a `run` whose record says `skipped` because no test could see the
 change.
 
+## GitHub Actions CI/CD Integration
+
+CodeCitadel provides an official composite GitHub Action (`action.yml`) to scan pull requests, detect AI slop, and publish SARIF reports to GitHub Code Scanning.
+
+Add this workflow to `.github/workflows/codecitadel.yml`:
+
+```yaml
+name: CodeCitadel Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  verify:
+    name: CodeCitadel Scan & SARIF
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run CodeCitadel
+        uses: afrdbaig7/CodeCitadel@main
+        with:
+          path: "."
+          fail-on: "high"
+          sarif-file: "codecitadel-results.sarif"
+          write-summary: "true"
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('codecitadel-results.sarif') != ''
+        with:
+          sarif_file: "codecitadel-results.sarif"
+          category: "codecitadel"
+```
+
+For security boundaries, secret isolation, and fork permissions, see [`docs/security-workflows.md`](docs/security-workflows.md).
+
 ## Repository layout
 
 ```text

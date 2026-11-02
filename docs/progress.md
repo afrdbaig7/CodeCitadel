@@ -142,13 +142,31 @@ migration idempotency, token hashing, report/artifact round-trip and tenant
 isolation, plus concurrent repository reuse; three API integration tests cover
 health metadata, upload/list/detail/artifact retrieval and cross-tenant denial.
 
+## R2 slices 8H–8J — S3 storage, OIDC identity, and organization roles
+
+- **8H (S3 Object Storage):** `S3ArtifactStorage` (`packages/storage/src/s3-artifacts.ts`)
+  provides presigned direct PUT URLs for artifacts exceeding the 1 MiB inline threshold
+  up to 64 MiB, streaming retrieval, and organization-scoped key isolation.
+- **8I (OIDC Identity):** `OidcVerifier` (`apps/api/src/oidc.ts`) provides standards-compliant
+  JWT verification using remote JWKS caching and claim validation via `jose`, with bootstrap
+  admin credentials for automated CI pipeline tokens.
+- **8J (Multi-Tenant Roles & Audit):** Role-based access control (`read_only`, `upload`, `admin`),
+  tenant-scoped run/artifact access, and structured audit event logging. Verified by 6 hosted
+  API tests in `apps/api/test/hosted.test.ts`.
+
+## Milestone: R3 — GitHub Action and community workflows
+
+- **Composite GitHub Action (`action.yml`):** Runs `scripts/run-action.mjs` in pull requests
+  and push workflows, emitting SARIF 2.1.0 and rich GitHub Step Summaries.
+- **Action Test Suite (`apps/cli/test/action.test.ts`):** 5 automated Vitest tests verifying
+  clean fixtures, policy breaches, fail-on overrides, SARIF schema validity, step summaries,
+  and control plane uploads.
+- **CI & Dogfooding Workflows:** `.github/workflows/ci.yml` and `.github/workflows/codecitadel.yml`.
+- **Security & Contributor Documentation:** `docs/security-workflows.md` and `CONTRIBUTING.md`.
+
 ## Next task (in order)
 
-1. **R2 slice 8H: private object storage** — S3-compatible upload of full
-   artifacts, with the API contract telling clients it is not the default yet.
-2. **R2 slice 8I: established OIDC identity** — bearer tokens are now plaintext
-   forever; an identity provider swap is the only way the platform can ever
-   rotate a tenant's keys.
-3. **R2 slice 8J: hosted organizations and permissions** — the four local
-   workspaces exist; the hosted deployment still needs multi-tenant identity,
-   per-run permissions, and Postgres/object storage behind them.
+1. **Phase 6: Mutation testing integration** — StrykerJS adapter for changed-code mutation,
+   tracking killed vs. surviving mutants to detect tests that pass without asserting behavior.
+2. **R4: Managed asynchronous execution fleet** — Temporal workflows, PostgreSQL transactional
+   outbox, and hardened gVisor (`runsc`) sandboxes.

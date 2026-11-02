@@ -123,24 +123,39 @@ report upload is complete. The hosted story is left to the checklist below.
       migration version appear on health; ordered migrations live in
       `packages/storage/src/db-postgres.ts`. Real PostgreSQL storage/API suites
       pass (7 integration tests).
-- [ ] **8H — private object storage.** full artifacts leave the store;
-      `storage.driver: "s3"` behind an explicit flag.
-- [ ] **8I — established OIDC identity.** bearer tokens rotate behind an
-      identity provider; plaintext tokens are a local-plane detail, not a
-      hosted platform property.
-- [ ] **8J — hosted organizations, permissions, and identity.** the four local
-      workspaces exist; the hosted deployment still needs multi-tenant identity,
-      per-run permissions, and Postgres/object storage behind them.
+- [x] **8H — private object storage.** S3-compatible presigned multipart uploads
+      for artifacts exceeding the 1 MiB inline limit up to 64 MiB; streaming reads
+      and bucket key isolation in `packages/storage/src/s3-artifacts.ts`.
+- [x] **8I — established OIDC identity.** standards-compliant OIDC JWT verifier
+      with remote JWKS caching, issuer/audience validation via `jose`, and bootstrap
+      admin initialization in `apps/api/src/oidc.ts`.
+- [x] **8J — hosted organizations, permissions, and identity.** multi-tenant
+      organization roles (`read_only`, `upload`, `admin`), membership management,
+      tenant isolation, and tamper-evident audit logs in `apps/api/src/server.ts`.
 
 **Gate for the checklist:** cross-tenant access denied in automated tests;
 uploaded evidence is labelled with its execution origin and never presented as
-managed execution. The control plane obeyed that gate in the SQLite edition.
+managed execution. Verified by 6 hosted API tests and PostgreSQL integration suites.
 
 ## R3 — GitHub workflow and community release
 
-Version-pinned Action using the same CLI, SARIF/Markdown output, retained
-reproduction artifacts, documented fork permissions, contribution tutorials, and
-a support matrix backed by real runs.
+- [x] **Composite GitHub Action (`action.yml`).** Automated verification action
+      running `node scripts/run-action.mjs`; emits schema-valid SARIF 2.1.0 reports,
+      rich GitHub Step Summaries with zero secret leakage, and output variables.
+- [x] **CI & Dogfooding Workflows.** `.github/workflows/ci.yml` (multi-OS tests on
+      Ubuntu and Windows) and `.github/workflows/codecitadel.yml` (self-verification
+      and GitHub Code Scanning SARIF upload).
+- [x] **Security & Fork Permissions.** Documented trust boundaries, read-only
+      token policy, and rejection of `pull_request_target` in `docs/security-workflows.md`.
+- [x] **Community Guides.** Contributor onboarding, architecture roadmap, and PR
+      standards in `CONTRIBUTING.md`.
+- [x] **Action Test Suite.** Comprehensive Vitest runner suite in
+      `apps/cli/test/action.test.ts` (5 tests covering clean/faulty fixtures, policy
+      breaches, SARIF validation, step summaries, and control plane upload).
+
+**Gate:** external repositories can install and invoke CodeCitadel in GitHub Actions,
+produce SARIF security alerts, generate step summaries, and upload evidence without
+requiring manual maintainer intervention.
 
 ## R4 — Managed execution
 
