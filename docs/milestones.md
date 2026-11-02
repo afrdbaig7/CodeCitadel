@@ -157,6 +157,22 @@ managed execution. Verified by 6 hosted API tests and PostgreSQL integration sui
 produce SARIF security alerts, generate step summaries, and upload evidence without
 requiring manual maintainer intervention.
 
+## Phase 6 — Mutation-Based Test Strength Analysis
+
+- [x] **Mutation Contracts & Scoring:** Zod data contracts (`mutationReportSchema`),
+      killed/survived/no_coverage/timed_out statuses, and standard score calculation.
+- [x] **AST Mutation Operators:** Five operator families (comparison, equality,
+      arithmetic, boolean, logical) discovering valid substitution points.
+- [x] **Disposable Copy Mutation Sandbox:** Supervised Vitest execution inside
+      disposable workspace copies, never touching the user checkout.
+- [x] **CLI Command & Renderer:** `codecitadel mutate [path]` with `--threshold`,
+      `--format`, `--out`, and rich terminal diffs with remediation advice.
+- [x] **Fixtures & Automated E2E:** Weak vs. strong test fixtures, 7 E2E tests passing.
+
+**Gate:** CodeCitadel reliably identifies surviving mutants in weak test suites, achieves
+100% score on strong test suites, exits 1 on threshold breach, and produces schema-valid
+mutation reports.
+
 ## R4 — Managed execution
 
 Temporal, transactional outbox, trusted orchestration workers, disposable

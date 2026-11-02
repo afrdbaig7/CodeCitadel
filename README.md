@@ -89,6 +89,7 @@ CodeCitadel answers: **"What changed, what could break, and what evidence do we 
   and imports nothing from CodeCitadel.
 - Concurrency race demonstration with `demo coupon-race`: spins up PostgreSQL in a disposable container, verifies the baseline race in a Fastify shopping API, classifies the defect, and verifies the unique-constraint patch in isolation.
 - Portable evidence bundles with `evidence export` and `replay`: generates tamper-evident archives verified by pre-execution SHA-256 checks before isolated re-execution.
+- Mutation testing test-gap detection with `mutate`: evaluates test suite strength by introducing AST mutations in disposable workspace copies to verify that tests actually fail when behavior is broken, surfacing unasserted logic gaps.
 - Reports its own limits. A truncated scan says so, a file that could not be
   re-read is reported as unverified rather than "removed", and the report always
   carries a limitations section.
@@ -166,6 +167,9 @@ node apps/cli/dist/index.js run . --base .codecitadel/root.json --out .codecitad
 # change the code (say, a fix), run again, and compare the stored reports:
 node apps/cli/dist/index.js run . --base .codecitadel/root.json --out .codecitadel/run-after.json --format json
 node apps/cli/dist/index.js compare --before .codecitadel/run-before.json --after .codecitadel/run-after.json
+
+# evaluate test suite strength via mutation testing (detects surviving mutants / test gaps)
+node apps/cli/dist/index.js mutate fixtures/mutation/weak --threshold 80
 
 # start the local evidence API and serve the dashboard (prints the token it issues)
 pnpm --filter @codecitadel/dashboard build   # once; the CLI serves apps/dashboard/dist

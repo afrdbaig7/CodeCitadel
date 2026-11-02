@@ -164,9 +164,28 @@ health metadata, upload/list/detail/artifact retrieval and cross-tenant denial.
 - **CI & Dogfooding Workflows:** `.github/workflows/ci.yml` and `.github/workflows/codecitadel.yml`.
 - **Security & Contributor Documentation:** `docs/security-workflows.md` and `CONTRIBUTING.md`.
 
+## Milestone: Phase 6 — Mutation-Based Test Strength Analysis
+
+- **Mutation Contracts (`packages/contracts/src/mutation.ts`):** Versioned Zod schemas
+  (`mutantSchema`, `mutantLocationSchema`, `mutationSummarySchema`, `mutationReportSchema`)
+  and `calculateMutationScore` following standard mutation testing semantics:
+  `(killed + timed_out) / (killed + survived + no_coverage + timed_out) * 100`.
+- **Core Mutation Engine (`packages/core/src/mutation.ts`):** Implements five core mutation
+  operator families (`ComparisonOperator`, `EqualityOperator`, `ArithmeticOperator`,
+  `BooleanOperator`, `LogicalOperator`). Executes mutations strictly in disposable copies
+  via `createSourceCopy`, never altering the user's checkout. Captures per-mutant unified
+  diffs and killing tests.
+- **CLI Mutate Command (`apps/cli/src/commands/mutate.ts`):** `codecitadel mutate [path]`
+  supporting `--threshold <pct>`, `--format <text|json>`, `--out <file>`, `--max-mutants <n>`,
+  and `--timeout-ms <ms>`. Rich terminal text renderer displaying exact inverse diffs and
+  remediation advice for survived mutants. Exits 1 on policy breach.
+- **Automated Validation:**
+  - `packages/contracts/test/mutation.test.ts` (2 unit tests pass).
+  - `packages/core/test/mutation.test.ts` (4 unit tests pass).
+  - `apps/cli/test/mutate.e2e.test.ts` (7 E2E tests pass covering weak fixture survival,
+    strong fixture killing, threshold failure/pass, and JSON schema validation).
+
 ## Next task (in order)
 
-1. **Phase 6: Mutation testing integration** — StrykerJS adapter for changed-code mutation,
-   tracking killed vs. surviving mutants to detect tests that pass without asserting behavior.
-2. **R4: Managed asynchronous execution fleet** — Temporal workflows, PostgreSQL transactional
-   outbox, and hardened gVisor (`runsc`) sandboxes.
+1. **R4: Managed asynchronous execution fleet** — Temporal workflows, PostgreSQL transactional
+   outbox, trusted orchestration workers, and hardened container execution sandboxes.
