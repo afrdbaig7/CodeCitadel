@@ -32,6 +32,9 @@ const PACKAGES = [
   "@codecitadel/core",
   "@codecitadel/executor",
   "@codecitadel/symbol-graph",
+  "@codecitadel/storage",
+  "@codecitadel/orchestrator",
+  "@codecitadel/api",
   platformPackage,
   "@codecitadel/cli",
 ];

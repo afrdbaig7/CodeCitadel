@@ -26,6 +26,26 @@ transitive audit is still outstanding.
 
 | Package | Version | Declared license |
 | --- | --- | --- |
+| `@aws-sdk/client-s3` | 3.1158.0 | Apache-2.0 |
+| `@aws-sdk/s3-request-presigner` | 3.1158.0 | Apache-2.0 |
+| `@types/pg` | 8.23.1 | MIT |
+| `@types/react` | not installed | not declared |
+| `@types/react-dom` | not installed | not declared |
+| `@vitejs/plugin-react` | 4.7.0 | MIT |
+| `autoprefixer` | 10.6.2 | MIT |
+| `better-sqlite3` | not installed | not declared |
 | `commander` | 14.0.0 | MIT |
+| `drizzle-orm` | 0.45.4 | Apache-2.0 |
+| `fastify` | 5.12.7 | MIT |
+| `jose` | 6.2.13 | MIT |
+| `lucide-react` | 1.62.0 | ISC |
+| `pg` | 8.23.1 | MIT |
+| `postcss` | 8.5.31 | MIT |
+| `react` | 19.3.1 | MIT |
+| `react-dom` | 19.3.1 | MIT |
+| `tailwindcss` | 3.4.19 | MIT |
+| `tsx` | 4.23.15 | MIT |
 | `typescript` | 5.9.2 | Apache-2.0 |
+| `vite` | 6.4.5 | MIT |
+| `vitest` | 3.2.4 | MIT |
 | `zod` | 4.0.5 | MIT |
