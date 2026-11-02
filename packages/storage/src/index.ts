@@ -16,6 +16,8 @@ export {
   type OrganizationMember,
   type AuditEvent,
   type InsertRunInput,
+  type CreateManagedRunInput,
+  type OutboxEventRecord,
   type IssueTokenInput,
   type EvidenceStore,
   type Organization,

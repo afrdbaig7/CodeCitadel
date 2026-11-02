@@ -9,9 +9,17 @@ import { ReportStore } from "../src/index.js";
 
 const scratch = mkdtempSync(path.join(tmpdir(), "codecitadel-storage-"));
 let counter = 0;
+const openedStores: ReportStore[] = [];
 
 afterAll(() => {
-  rmSync(scratch, { recursive: true, force: true });
+  for (const s of openedStores) {
+    try {
+      s.close();
+    } catch {}
+  }
+  try {
+    rmSync(scratch, { recursive: true, force: true });
+  } catch {}
 });
 
 function storeFile(name: string): string {
@@ -22,7 +30,9 @@ function storeFile(name: string): string {
 function opened(name: string): { store: ReportStore; artifacts: string; file: string } {
   const file = storeFile(name);
   const artifacts = path.join(path.dirname(file), "artifacts");
-  return { store: new ReportStore({ file, artifactsDir: artifacts }), artifacts, file };
+  const store = new ReportStore({ file, artifactsDir: artifacts });
+  openedStores.push(store);
+  return { store, artifacts, file };
 }
 
 const REPORT = JSON.stringify({ schemaVersion: 1, kind: "impact" });
@@ -45,11 +55,11 @@ describe("ReportStore migrations", () => {
   it("applies the history once and reopens at the same version", () => {
     const file = storeFile("migrate");
     const first = new ReportStore({ file, artifactsDir: path.join(scratch, "m1") });
-    expect(first.schemaVersion).toBe(2);
+    expect(first.schemaVersion).toBe(3);
     first.close();
 
     const second = new ReportStore({ file, artifactsDir: path.join(scratch, "m1") });
-    expect(second.schemaVersion).toBe(2);
+    expect(second.schemaVersion).toBe(3);
     second.close();
   });
 });

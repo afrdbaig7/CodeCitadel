@@ -15,7 +15,7 @@ import { openDatabase } from "./db.js";
 
 const RUN_COLUMNS = `r.id, r.organization_id, r.repository_id, repo.name as repository_name,
             r.commit_ref as head_commit, r.branch_ref as head_branch, r.kind, r.origin, r.captured_at,
-            r.received_at, r.report_digest, r.outcome, r.bytes`;
+            r.received_at, r.report_digest, r.outcome, r.bytes, r.status`;
 
 const RUN_FROM = `from runs r join repositories repo on repo.id = r.repository_id`;
 
@@ -87,6 +87,29 @@ export interface StoredRunDetail {
   reportJson: string;
 }
 
+export interface CreateManagedRunInput {
+  organizationId: string;
+  repository: { name: string; commit: string | null; branch: string | null };
+  check: { kind: ReportKind; options?: Record<string, unknown> };
+  budget?: { timeoutMs?: number; maxFiles?: number; maxMutants?: number };
+}
+
+export interface OutboxEventRecord {
+  id: string;
+  organizationId: string;
+  runId: string;
+  eventType: "run.dispatch" | "run.cancel";
+  status: "pending" | "processing" | "dispatched" | "completed" | "failed";
+  payloadJson: string;
+  payloadDigest: string;
+  retryCount: number;
+  maxRetries: number;
+  errorMessage: string | null;
+  createdAt: string;
+  dispatchedAt: string | null;
+  updatedAt: string;
+}
+
 export interface ReadArtifact {
   bytes: Buffer;
   digest: string;
@@ -112,6 +135,11 @@ export interface EvidenceStore {
   readArtifact(organizationId: string, runId: string, name: string): ReadArtifact | null | Promise<ReadArtifact | null>;
   getArtifact(organizationId: string, runId: string, name: string): StoredArtifact | null | Promise<StoredArtifact | null>;
   attachArtifact(organizationId: string, runId: string, artifact: ArtifactInput & { objectKey: string; byteLength: number }): void | Promise<void>;
+  createManagedRun(input: CreateManagedRunInput): { runId: string; outboxEventId: string } | Promise<{ runId: string; outboxEventId: string }>;
+  claimOutboxEvents(batchSize?: number): OutboxEventRecord[] | Promise<OutboxEventRecord[]>;
+  markOutboxDispatched(id: string): void | Promise<void>;
+  markOutboxFailed(id: string, errorMessage: string): void | Promise<void>;
+  updateRunStatus(organizationId: string, runId: string, status: string, details?: { outcome?: string; reportJson?: string }): void | Promise<void>;
   close(): void | Promise<void>;
 }
 
@@ -336,6 +364,7 @@ export class ReportStore implements EvidenceStore {
     report_digest: string;
     outcome: string | null;
     bytes: number;
+    status?: string | null;
   }): StoredRun {
     const artifacts = this.db
       .prepare("select name, digest, bytes from artifacts where run_id = ? order by name")
@@ -351,6 +380,7 @@ export class ReportStore implements EvidenceStore {
       },
       kind: row.kind as ReportKind,
       origin: row.origin as EvidenceOrigin,
+      status: (row.status ?? "completed") as StoredRun["status"],
       capturedAt: row.captured_at,
       receivedAt: row.received_at,
       reportDigest: row.report_digest,
@@ -421,6 +451,159 @@ export class ReportStore implements EvidenceStore {
       throw new Error(`Refusing to read ${name}: the stored path escapes the artifact directory.`);
     }
     return { bytes: readFileSync(absolute), digest: row.digest };
+  }
+
+  createManagedRun(input: CreateManagedRunInput): { runId: string; outboxEventId: string } {
+    const repositoryId = this.ensureRepository(input.organizationId, input.repository.name);
+    const runId = id("run");
+    const outboxId = id("outbox");
+    const now = new Date().toISOString();
+    const dummyDigest = payloadDigest(Buffer.from("{}", "utf8"));
+    const payload = {
+      runId,
+      organizationId: input.organizationId,
+      repository: input.repository,
+      check: input.check,
+      budget: input.budget ?? {},
+    };
+    const payloadJson = JSON.stringify(payload);
+    const digest = payloadDigest(Buffer.from(payloadJson, "utf8"));
+
+    this.db.exec("begin");
+    try {
+      this.db
+        .prepare(
+          `insert into runs (id, organization_id, repository_id, kind, origin, commit_ref,
+                             branch_ref, captured_at, received_at, report_digest, report_json,
+                             outcome, bytes, status)
+           values (?, ?, ?, ?, 'managed', ?, ?, ?, ?, ?, '{}', null, 0, 'queued')`,
+        )
+        .run(
+          runId,
+          input.organizationId,
+          repositoryId,
+          input.check.kind,
+          input.repository.commit,
+          input.repository.branch,
+          now,
+          now,
+          dummyDigest,
+        );
+
+      this.db
+        .prepare(
+          `insert into outbox_events (id, organization_id, run_id, event_type, status, payload_json,
+                                      payload_digest, retry_count, max_retries, error_message,
+                                      created_at, dispatched_at, updated_at)
+           values (?, ?, ?, 'run.dispatch', 'pending', ?, ?, 0, 5, null, ?, null, ?)`,
+        )
+        .run(outboxId, input.organizationId, runId, payloadJson, digest, now, now);
+
+      this.db.exec("commit");
+      return { runId, outboxEventId: outboxId };
+    } catch (error) {
+      this.db.exec("rollback");
+      throw error;
+    }
+  }
+
+  claimOutboxEvents(batchSize = 10): OutboxEventRecord[] {
+    const now = new Date().toISOString();
+    this.db.exec("begin");
+    try {
+      const rows = this.db
+        .prepare(
+          `select id, organization_id, run_id, event_type, status, payload_json, payload_digest,
+                  retry_count, max_retries, error_message, created_at, dispatched_at, updated_at
+           from outbox_events
+           where status in ('pending', 'failed') and retry_count < max_retries
+           order by created_at asc limit ?`,
+        )
+        .all(batchSize) as {
+          id: string;
+          organization_id: string;
+          run_id: string;
+          event_type: "run.dispatch" | "run.cancel";
+          status: string;
+          payload_json: string;
+          payload_digest: string;
+          retry_count: number;
+          max_retries: number;
+          error_message: string | null;
+          created_at: string;
+          dispatched_at: string | null;
+          updated_at: string;
+        }[];
+
+      for (const row of rows) {
+        this.db
+          .prepare("update outbox_events set status = 'processing', updated_at = ? where id = ?")
+          .run(now, row.id);
+      }
+      this.db.exec("commit");
+
+      return rows.map((r) => ({
+        id: r.id,
+        organizationId: r.organization_id,
+        runId: r.run_id,
+        eventType: r.event_type,
+        status: "processing" as const,
+        payloadJson: r.payload_json,
+        payloadDigest: r.payload_digest,
+        retryCount: r.retry_count,
+        maxRetries: r.max_retries,
+        errorMessage: r.error_message,
+        createdAt: r.created_at,
+        dispatchedAt: r.dispatched_at,
+        updatedAt: now,
+      }));
+    } catch (error) {
+      this.db.exec("rollback");
+      throw error;
+    }
+  }
+
+  markOutboxDispatched(id: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        "update outbox_events set status = 'dispatched', dispatched_at = ?, updated_at = ? where id = ?",
+      )
+      .run(now, now, id);
+  }
+
+  markOutboxFailed(id: string, errorMessage: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        "update outbox_events set status = 'failed', retry_count = retry_count + 1, error_message = ?, updated_at = ? where id = ?",
+      )
+      .run(errorMessage, now, id);
+  }
+
+  updateRunStatus(
+    organizationId: string,
+    runId: string,
+    status: string,
+    details?: { outcome?: string; reportJson?: string },
+  ): void {
+    if (details?.reportJson) {
+      const digest = payloadDigest(Buffer.from(details.reportJson, "utf8"));
+      const bytes = Buffer.byteLength(details.reportJson, "utf8");
+      this.db
+        .prepare(
+          `update runs set status = ?, outcome = coalesce(?, outcome), report_json = ?, report_digest = ?, bytes = ?
+           where organization_id = ? and id = ?`,
+        )
+        .run(status, details.outcome ?? null, details.reportJson, digest, bytes, organizationId, runId);
+    } else {
+      this.db
+        .prepare(
+          `update runs set status = ?, outcome = coalesce(?, outcome)
+           where organization_id = ? and id = ?`,
+        )
+        .run(status, details?.outcome ?? null, organizationId, runId);
+    }
   }
 
   close(): void {

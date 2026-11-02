@@ -48,6 +48,7 @@ const runsTable = pgTable(
     reportDigest: text("report_digest").notNull(),
     reportJson: text("report_json").notNull(),
     outcome: text("outcome"),
+    status: text("status").notNull().default("completed"),
     bytes: integer("bytes").notNull(),
   },
   (table) => [index("runs_by_tenant").on(table.organizationId, table.receivedAt)],
@@ -84,6 +85,32 @@ export const postgresSchema = {
     },
     (table) => [uniqueIndex("artifacts_by_run_name").on(table.runId, table.name)],
   ),
+  outboxEvents: pgTable(
+    "outbox_events",
+    {
+      id: text("id").primaryKey(),
+      organizationId: text("organization_id")
+        .notNull()
+        .references(() => organizationsTable.id, { onDelete: "cascade" }),
+      runId: text("run_id")
+        .notNull()
+        .references(() => runsTable.id, { onDelete: "cascade" }),
+      eventType: text("event_type").notNull(),
+      status: text("status").notNull().default("pending"),
+      payloadJson: text("payload_json").notNull(),
+      payloadDigest: text("payload_digest").notNull(),
+      retryCount: integer("retry_count").notNull().default(0),
+      maxRetries: integer("max_retries").notNull().default(5),
+      errorMessage: text("error_message"),
+      createdAt: text("created_at").notNull(),
+      dispatchedAt: text("dispatched_at"),
+      updatedAt: text("updated_at").notNull(),
+    },
+    (table) => [
+      uniqueIndex("outbox_events_run_type").on(table.runId, table.eventType),
+      index("outbox_events_by_status").on(table.status, table.createdAt),
+    ],
+  ),
 };
 
 /** One version contains ordered SQL statements so each DDL change is reviewable. */
@@ -103,6 +130,11 @@ export const POSTGRES_MIGRATIONS: readonly (readonly string[])[] = [
     `create index oidc_memberships_by_identity on oidc_memberships (issuer, subject)`,
     `create table audit_events (id text primary key, organization_id text not null references organizations(id) on delete cascade, actor text not null, action text not null, target text not null, created_at text not null)`,
     `create index audit_events_by_tenant on audit_events (organization_id, created_at desc)`,
+  ],
+  [
+    `alter table runs add column status text not null default 'completed'`,
+    `create table outbox_events (id text primary key, organization_id text not null references organizations(id) on delete cascade, run_id text not null references runs(id) on delete cascade, event_type text not null, status text not null default 'pending', payload_json text not null, payload_digest text not null, retry_count integer not null default 0, max_retries integer not null default 5, error_message text, created_at text not null, dispatched_at text, updated_at text not null, unique (run_id, event_type))`,
+    `create index outbox_events_by_status on outbox_events (status, created_at)`,
   ],
 ];
 

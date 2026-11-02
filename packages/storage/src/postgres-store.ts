@@ -8,8 +8,8 @@ import type { QueryResultRow } from "pg";
 
 import { openPostgresDatabase } from "./db-postgres.js";
 import type {
-  ArtifactInput, AuditEvent, AuthPrincipal, EvidenceStore, InsertRunInput, IssueTokenInput,
-  Organization, OrganizationMember, OrganizationRole, ReadArtifact, StoredArtifact, StoredRunDetail,
+  ArtifactInput, AuditEvent, AuthPrincipal, CreateManagedRunInput, EvidenceStore, InsertRunInput, IssueTokenInput,
+  Organization, OrganizationMember, OrganizationRole, OutboxEventRecord, ReadArtifact, StoredArtifact, StoredRunDetail,
 } from "./store.js";
 
 function id(prefix: string): string { return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 16)}`; }
@@ -19,7 +19,7 @@ interface RunRow extends QueryResultRow {
   id: string; organization_id: string; repository_id: string; repository_name: string;
   head_commit: string | null; head_branch: string | null; kind: string; origin: string;
   captured_at: string; received_at: string; report_digest: string; outcome: string | null;
-  bytes: number; report_json?: string;
+  bytes: number; report_json?: string; status?: string;
 }
 interface ArtifactRow extends QueryResultRow { name: string; digest: string; bytes: number; relative_path?: string; storage_driver?: "filesystem" | "s3"; }
 
@@ -103,7 +103,20 @@ export class PostgresReportStore implements EvidenceStore {
   }
   private async rowToRun(row: RunRow): Promise<StoredRun> {
     const result = await this.db.execute<ArtifactRow>(sql`select name,digest,bytes from artifacts where run_id=${row.id} order by name`);
-    return { id: row.id, organizationId: row.organization_id, repository: { id: row.repository_id, name: row.repository_name, commit: row.head_commit, branch: row.head_branch }, kind: row.kind as StoredRun["kind"], origin: row.origin as StoredRun["origin"], capturedAt: row.captured_at, receivedAt: row.received_at, reportDigest: row.report_digest, outcome: row.outcome, bytes: row.bytes, artifacts: result.rows };
+    return {
+      id: row.id,
+      organizationId: row.organization_id,
+      repository: { id: row.repository_id, name: row.repository_name, commit: row.head_commit, branch: row.head_branch },
+      kind: row.kind as StoredRun["kind"],
+      origin: row.origin as StoredRun["origin"],
+      status: (row.status ?? "completed") as StoredRun["status"],
+      capturedAt: row.captured_at,
+      receivedAt: row.received_at,
+      reportDigest: row.report_digest,
+      outcome: row.outcome,
+      bytes: row.bytes,
+      artifacts: result.rows,
+    };
   }
   async listRuns(organizationId: string, limit = 50): Promise<StoredRun[]> {
     const result = await this.db.execute<RunRow>(sql`select r.id,r.organization_id,r.repository_id,repo.name as repository_name,r.commit_ref as head_commit,r.branch_ref as head_branch,r.kind,r.origin,r.captured_at,r.received_at,r.report_digest,r.outcome,r.bytes from runs r join repositories repo on repo.id=r.repository_id where r.organization_id=${organizationId} order by r.received_at desc limit ${limit}`);
@@ -127,6 +140,126 @@ export class PostgresReportStore implements EvidenceStore {
     const artifact = await this.getArtifact(organizationId, runId, name); if (artifact === null || artifact.storageDriver === "s3") return null;
     const file = path.resolve(this.artifactsDir, artifact.objectKey); if (!file.startsWith(`${this.artifactsDir}${path.sep}`)) throw new Error("Stored artifact path escapes storage directory.");
     return { bytes: readFileSync(file), digest: artifact.digest };
+  }
+  async createManagedRun(input: CreateManagedRunInput): Promise<{ runId: string; outboxEventId: string }> {
+    const runId = id("run");
+    const outboxId = id("outbox");
+    const now = new Date().toISOString();
+    const dummyDigest = payloadDigest(Buffer.from("{}", "utf8"));
+    const payload = {
+      runId,
+      organizationId: input.organizationId,
+      repository: input.repository,
+      check: input.check,
+      budget: input.budget ?? {},
+    };
+    const payloadJson = JSON.stringify(payload);
+    const digest = payloadDigest(Buffer.from(payloadJson, "utf8"));
+
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`insert into repositories(id, organization_id, name, created_at)
+            values(${id("repo")}, ${input.organizationId}, ${input.repository.name}, ${now})
+            on conflict(organization_id, name) do nothing`,
+      );
+      const repo = await tx.execute<{ id: string }>(
+        sql`select id from repositories where organization_id = ${input.organizationId} and name = ${input.repository.name}`,
+      );
+      const repoId = repo.rows[0]?.id;
+      if (repoId === undefined) throw new Error("Repository row missing after insert.");
+
+      await tx.execute(
+        sql`insert into runs(id, organization_id, repository_id, kind, origin, commit_ref, branch_ref, captured_at, received_at, report_digest, report_json, outcome, bytes, status)
+            values(${runId}, ${input.organizationId}, ${repoId}, ${input.check.kind}, 'managed', ${input.repository.commit}, ${input.repository.branch}, ${now}, ${now}, ${dummyDigest}, '{}', null, 0, 'queued')`,
+      );
+
+      await tx.execute(
+        sql`insert into outbox_events(id, organization_id, run_id, event_type, status, payload_json, payload_digest, retry_count, max_retries, error_message, created_at, dispatched_at, updated_at)
+            values(${outboxId}, ${input.organizationId}, ${runId}, 'run.dispatch', 'pending', ${payloadJson}, ${digest}, 0, 5, null, ${now}, null, ${now})`,
+      );
+    });
+
+    return { runId, outboxEventId: outboxId };
+  }
+  async claimOutboxEvents(batchSize = 10): Promise<OutboxEventRecord[]> {
+    const now = new Date().toISOString();
+    return await this.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('codecitadel-outbox-dispatch'))`);
+      const result = await tx.execute<{
+        id: string;
+        organization_id: string;
+        run_id: string;
+        event_type: "run.dispatch" | "run.cancel";
+        status: string;
+        payload_json: string;
+        payload_digest: string;
+        retry_count: number;
+        max_retries: number;
+        error_message: string | null;
+        created_at: string;
+        dispatched_at: string | null;
+        updated_at: string;
+      }>(
+        sql`select id, organization_id, run_id, event_type, status, payload_json, payload_digest, retry_count, max_retries, error_message, created_at, dispatched_at, updated_at
+            from outbox_events
+            where status in ('pending', 'failed') and retry_count < max_retries
+            order by created_at asc limit ${batchSize} for update skip locked`,
+      );
+
+      for (const row of result.rows) {
+        await tx.execute(
+          sql`update outbox_events set status = 'processing', updated_at = ${now} where id = ${row.id}`,
+        );
+      }
+
+      return result.rows.map((r) => ({
+        id: r.id,
+        organizationId: r.organization_id,
+        runId: r.run_id,
+        eventType: r.event_type,
+        status: "processing" as const,
+        payloadJson: r.payload_json,
+        payloadDigest: r.payload_digest,
+        retryCount: r.retry_count,
+        maxRetries: r.max_retries,
+        errorMessage: r.error_message,
+        createdAt: r.created_at,
+        dispatchedAt: r.dispatched_at,
+        updatedAt: now,
+      }));
+    });
+  }
+  async markOutboxDispatched(id: string): Promise<void> {
+    const now = new Date().toISOString();
+    await this.db.execute(
+      sql`update outbox_events set status = 'dispatched', dispatched_at = ${now}, updated_at = ${now} where id = ${id}`,
+    );
+  }
+  async markOutboxFailed(id: string, errorMessage: string): Promise<void> {
+    const now = new Date().toISOString();
+    await this.db.execute(
+      sql`update outbox_events set status = 'failed', retry_count = retry_count + 1, error_message = ${errorMessage}, updated_at = ${now} where id = ${id}`,
+    );
+  }
+  async updateRunStatus(
+    organizationId: string,
+    runId: string,
+    status: string,
+    details?: { outcome?: string; reportJson?: string },
+  ): Promise<void> {
+    if (details?.reportJson) {
+      const digest = payloadDigest(Buffer.from(details.reportJson, "utf8"));
+      const bytes = Buffer.byteLength(details.reportJson, "utf8");
+      await this.db.execute(
+        sql`update runs set status = ${status}, outcome = coalesce(${details.outcome ?? null}, outcome), report_json = ${details.reportJson}, report_digest = ${digest}, bytes = ${bytes}
+            where organization_id = ${organizationId} and id = ${runId}`,
+      );
+    } else {
+      await this.db.execute(
+        sql`update runs set status = ${status}, outcome = coalesce(${details?.outcome ?? null}, outcome)
+            where organization_id = ${organizationId} and id = ${runId}`,
+      );
+    }
   }
   async close(): Promise<void> { await this.pool.end(); }
 }

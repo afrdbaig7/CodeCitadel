@@ -74,6 +74,24 @@ export const MIGRATIONS: readonly string[] = [
      created_at text not null
    );
    create index if not exists audit_events_by_tenant on audit_events (organization_id, created_at desc);`,
+  `alter table runs add column status text not null default 'completed';
+   create table if not exists outbox_events (
+     id text primary key,
+     organization_id text not null references organizations(id) on delete cascade,
+     run_id text not null references runs(id) on delete cascade,
+     event_type text not null,
+     status text not null default 'pending',
+     payload_json text not null,
+     payload_digest text not null,
+     retry_count integer not null default 0,
+     max_retries integer not null default 5,
+     error_message text,
+     created_at text not null,
+     dispatched_at text,
+     updated_at text not null,
+     unique (run_id, event_type)
+   );
+   create index if not exists outbox_events_by_status on outbox_events (status, created_at);`,
 ];
 
 export interface OpenedDatabase {
