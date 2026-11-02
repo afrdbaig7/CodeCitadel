@@ -62,15 +62,15 @@ uploads, inside the operator's own checkout — uploads do not copy anything).
 ### Commands run (actual results)
 
 ```text
-cargo test --workspace                     → 32 passed, 0 failed
+cargo test --workspace                             → 32 passed, 0 failed (30 unit + 2 protocol-fixture)
 cargo clippy --workspace --all-targets -D warnings → clean
-cargo fmt --all --check                    → clean
-pnpm typecheck                             → 15 tasks, clean
-pnpm build                                 → 8 packages built
-pnpm test                                  → 89 passed in apps/cli (12 suites); 294 passed across all packages, 0 failed
-node scripts/package-scanner.mjs           → win32-x64 artifact, sha256 recorded
-node scripts/verify-pack.mjs               → 7 tarballs, 21 checks, all passing
-node scripts/docs-check.mjs                → docs:check — clean
+cargo fmt --all --check                            → clean
+pnpm typecheck                                     → 10 packages, clean
+pnpm build                                         → 10 packages built, clean
+pnpm test                                          → 113 passed in apps/cli (16 suites); 363 passed across all packages, 0 failed
+node scripts/package-scanner.mjs                   → win32-x64 artifact, sha256 recorded
+node scripts/verify-pack.mjs                       → 10 tarballs, 19 checks, all passing
+GitHub Actions CI (Ubuntu + Windows + Action)      → 100% passing (run 41436299894, 41436299787)
 ```
 
 ### The control plane, in one paragraph
