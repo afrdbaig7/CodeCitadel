@@ -1,0 +1,87 @@
+name: "CodeCitadel Verification"
+description: "AI slop detection, impact analysis, and behavioral verification for pull requests and CI."
+author: "CodeCitadel Team"
+branding:
+  icon: "shield-check"
+  color: "blue"
+
+inputs:
+  path:
+    description: "Path to repository or directory to analyze"
+    required: false
+    default: "."
+  command:
+    description: "CodeCitadel command to run (scan, diff, impact, verify)"
+    required: false
+    default: "scan"
+  base-ref:
+    description: "Base git ref or snapshot path for diff/impact/verify"
+    required: false
+  fail-on:
+    description: "Severity threshold that fails the check (none, low, medium, high, critical)"
+    required: false
+    default: "high"
+  rules:
+    description: "Comma-separated list of rule IDs to enable"
+    required: false
+  sarif-file:
+    description: "File path to save the SARIF 2.1.0 report for GitHub Code Scanning"
+    required: false
+    default: "codecitadel-results.sarif"
+  report-file:
+    description: "File path to save the full JSON report"
+    required: false
+  write-summary:
+    description: "Whether to write a rich Markdown report to the GitHub Step Summary"
+    required: false
+    default: "true"
+  upload:
+    description: "Whether to upload the report to the CodeCitadel control plane"
+    required: false
+    default: "false"
+  server:
+    description: "Control plane base URL (e.g., https://citadel.example.com)"
+    required: false
+  token:
+    description: "Control plane bearer token (or set CODECITADEL_TOKEN)"
+    required: false
+  organization:
+    description: "Organization slug for multi-tenant control plane"
+    required: false
+
+outputs:
+  sarif-file:
+    description: "Path to the generated SARIF report"
+    value: ${{ steps.run.outputs.sarif-file }}
+  findings-count:
+    description: "Total findings detected"
+    value: ${{ steps.run.outputs.findings-count }}
+  breach-count:
+    description: "Number of findings breaching the fail-on policy"
+    value: ${{ steps.run.outputs.breach-count }}
+  verdict:
+    description: "Final verification verdict (passed or failed)"
+    value: ${{ steps.run.outputs.verdict }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run CodeCitadel Verification
+      id: run
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_RULES: ${{ inputs.rules }}
+        INPUT_SARIF_FILE: ${{ inputs.sarif-file }}
+        INPUT_REPORT_FILE: ${{ inputs.report-file }}
+        INPUT_WRITE_SUMMARY: ${{ inputs.write-summary }}
+        INPUT_UPLOAD: ${{ inputs.upload }}
+        INPUT_SERVER: ${{ inputs.server }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_ORGANIZATION: ${{ inputs.organization }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        node "${{ github.action_path }}/scripts/run-action.mjs"
