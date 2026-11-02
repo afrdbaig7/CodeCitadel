@@ -84,4 +84,4 @@ runs:
         INPUT_ORGANIZATION: ${{ inputs.organization }}
         ACTION_PATH: ${{ github.action_path }}
       run: |
-        node "${{ github.action_path }}/scripts/run-action.mjs"
+        node "$ACTION_PATH/scripts/run-action.mjs"

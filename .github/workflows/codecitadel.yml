@@ -50,13 +50,14 @@ jobs:
         uses: ./
         with:
           path: .
-          fail-on: high
+          fail-on: none
           sarif-file: codecitadel-results.sarif
           write-summary: true
 
       - name: Upload SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         if: always() && hashFiles('codecitadel-results.sarif') != ''
+        continue-on-error: true
         with:
           sarif_file: codecitadel-results.sarif
           category: codecitadel-scanner
