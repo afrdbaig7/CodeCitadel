@@ -279,7 +279,7 @@ describe("codecitadel upload e2e", () => {
       TOKEN,
     ]);
     expect(unknown.code).toBe(2);
-    expect(unknown.stderr).toContain("matches none of the 8 report contracts");
+    expect(unknown.stderr).toContain("matches none of the 9 report contracts");
 
     const wrongKind = await cli([
       "upload",

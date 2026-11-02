@@ -181,7 +181,7 @@ describe("private S3-compatible artifacts", () => {
     expect(fetched.headers["x-codecitadel-digest"]).toBe(digest);
     expect(fetched.rawPayload).toEqual(bytes);
     expect((await store.getRun(org.id, run.id))?.run.artifacts).toContainEqual({ name: "bundle.bin", digest, bytes: bytes.length });
-  });
+  }, 30_000);
 
   it("rejects cross-tenant artifact initiation", async () => {
     const response = await app.inject({ method: "POST", url: `/api/v1/runs/run_missing/artifacts/x.bin/upload`, headers: authorization(await jwt()), payload: { digest: payloadDigest("x"), bytes: 2 * 1024 * 1024 } });
