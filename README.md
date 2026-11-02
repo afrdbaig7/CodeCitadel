@@ -90,6 +90,7 @@ CodeCitadel answers: **"What changed, what could break, and what evidence do we 
 - Concurrency race demonstration with `demo coupon-race`: spins up PostgreSQL in a disposable container, verifies the baseline race in a Fastify shopping API, classifies the defect, and verifies the unique-constraint patch in isolation.
 - Portable evidence bundles with `evidence export` and `replay`: generates tamper-evident archives verified by pre-execution SHA-256 checks before isolated re-execution.
 - Mutation testing test-gap detection with `mutate`: evaluates test suite strength by introducing AST mutations in disposable workspace copies to verify that tests actually fail when behavior is broken, surfacing unasserted logic gaps.
+- Asynchronous managed verification with `dispatch`: submits verification requests to the control plane via durable transactional outbox, driven by Temporal-style orchestration workers and sandboxed disposable execution environments.
 - Reports its own limits. A truncated scan says so, a file that could not be
   re-read is reported as unverified rather than "removed", and the report always
   carries a limitations section.

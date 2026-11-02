@@ -185,7 +185,43 @@ health metadata, upload/list/detail/artifact retrieval and cross-tenant denial.
   - `apps/cli/test/mutate.e2e.test.ts` (7 E2E tests pass covering weak fixture survival,
     strong fixture killing, threshold failure/pass, and JSON schema validation).
 
+## Milestone: R4 — Managed Execution Fleet & Durable Outbox
+
+- **Managed Run Contracts (`packages/contracts/src/managed.ts`):** `managedRunRequestSchema`,
+  `managedRunResponseSchema`, `managedRunStatusSchema` (`queued`, `running`, `completed`,
+  `failed`, `cancelled`), and `outboxEventRecordSchema`.
+- **PostgreSQL Transactional Outbox (Migration 3):** Durable `outbox_events` table and
+  `runs.status` tracking in `packages/storage/src/db-postgres.ts` and `packages/storage/src/db.ts`.
+  Transactional insertion guarantees that run creation and asynchronous execution intent
+  are atomic. Concurrency is safely serialized via `select pg_advisory_xact_lock(...)`
+  and `for update skip locked`.
+- **Execution Sandbox Boundary (`packages/executor/src/sandbox.ts`):**
+  Hardened sandbox environment per Sections 14 and 24.1: strips sensitive host secrets
+  (`AWS_`, `GOOGLE_`, `AZURE_`, `DOCKER_HOST`, `DATABASE_URL`, SSH keys), blocks cloud metadata,
+  enforces non-root container context, and strictly validates result channel artifacts.
+- **Orchestration Worker Package (`packages/orchestrator`):**
+  - `ManagedVerificationWorkflow`: multi-stage workflow coordinator (`initializing` $\to$
+    `acquiring` $\to$ `executing` $\to$ `finalizing` $\to$ `completed` / `cancelled`).
+  - `OutboxDispatcher`: polling service claiming pending outbox events and dispatching
+    workflows with exponential backoff on failure.
+  - `EmbeddedOrchestrationEngine`: deterministic runtime engine supporting workflow signals,
+    cancellation, and state queries.
+- **Control Plane API Endpoints (`apps/api/src/server.ts`):**
+  - `POST /api/v1/runs/managed`: accepts verification payload, writes outbox intent, returns
+    `202 Accepted` with status URL.
+  - `POST /api/v1/runs/:id/cancel`: cancels in-flight managed runs.
+  - `GET /api/v1/runs/:id`: returns current lifecycle status and stored evidence.
+- **CLI Dispatch Command (`codecitadel dispatch`):**
+  Submits verification intent to the control plane, supporting `--check`, `--commit`, `--branch`,
+  `--format text|json`, and `--wait` polling.
+- **Automated Validation:**
+  - `packages/contracts/test/managed.test.ts` (4 tests)
+  - `packages/executor/test/sandbox.test.ts` (5 tests)
+  - `packages/storage/test/outbox.test.ts` (5 tests)
+  - `packages/orchestrator/test/orchestrator.test.ts` (3 tests)
+  - `apps/api/test/managed.test.ts` (6 tests)
+  - `apps/cli/test/dispatch.e2e.test.ts` (6 tests)
+
 ## Next task (in order)
 
-1. **R4: Managed asynchronous execution fleet** — Temporal workflows, PostgreSQL transactional
-   outbox, trusted orchestration workers, and hardened container execution sandboxes.
+1. **R5: Scale measured workloads** — Valkey caches, PgBouncer, autoscaling policies, and k6 load verification.

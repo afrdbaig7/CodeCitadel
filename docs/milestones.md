@@ -175,9 +175,37 @@ mutation reports.
 
 ## R4 — Managed execution
 
-Temporal, transactional outbox, trusted orchestration workers, disposable
-sandboxes, quotas, and the hosted security gates. Kubernetes/gVisor belong here,
-subject to tested compatibility and threat modelling.
+- [x] **PostgreSQL Transactional Outbox (Migration 3):** Schema migration adding
+      `outbox_events` and run `status` tracking (`queued`, `running`, `completed`,
+      `failed`, `cancelled`). Transactionally writes run intent and outbox event with
+      idempotent payload digest and advisory locks.
+- [x] **Hardened Execution Sandbox Boundaries (`packages/executor/src/sandbox.ts`):**
+      Threat model enforcement per Sections 14 and 24.1: non-root UID guidelines,
+      dropped Linux capabilities, denial of host Docker daemon socket, denial of cloud
+      metadata (169.254.169.254), stripped credentials, and result channel validation.
+- [x] **Orchestration Worker & Dispatcher (`packages/orchestrator`):**
+      Temporal-style workflow state machine (`ManagedVerificationWorkflow`), activity
+      execution, outbox polling dispatcher (`OutboxDispatcher`), and embedded runtime
+      engine (`EmbeddedOrchestrationEngine`) with cancellation support.
+- [x] **Managed API Endpoints (`apps/api`):**
+      - `POST /api/v1/runs/managed`: authorizes request, creates transactional intent,
+        and returns `202 Accepted` with status URL.
+      - `POST /api/v1/runs/:id/cancel`: cancels in-flight managed runs.
+      - `GET /api/v1/runs/:id`: reports lifecycle status and finished evidence.
+- [x] **CLI Dispatch Command (`codecitadel dispatch`):**
+      Submits asynchronous verification intent to control plane, supports `--check`,
+      `--commit`, `--branch`, `--format json|text`, and `--wait` polling loop.
+- [x] **Automated Verification:**
+      - `packages/contracts/test/managed.test.ts` (4 tests)
+      - `packages/executor/test/sandbox.test.ts` (5 tests)
+      - `packages/storage/test/outbox.test.ts` (5 tests)
+      - `packages/orchestrator/test/orchestrator.test.ts` (3 tests)
+      - `apps/api/test/managed.test.ts` (6 tests)
+      - `apps/cli/test/dispatch.e2e.test.ts` (6 tests)
+
+**Gate:** API accepts managed verification requests with 202 Accepted, persists durable
+outbox intent, trusted worker dispatches and executes stages in sandboxed isolation,
+projections reflect real state changes, and cancellation terminates cleanly.
 
 ## R5 — Scale measured workloads
 
