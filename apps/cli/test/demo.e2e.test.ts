@@ -10,6 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 const exec = promisify(execFile);
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const cliEntry = path.join(repoRoot, "apps", "cli", "dist", "index.js");
+const vitestEntry = path.join(repoRoot, "node_modules", "vitest", "vitest.mjs");
 const project = path.join(repoRoot, "examples", "shopping-api");
 const scratch = mkdtempSync(path.join(tmpdir(), "codecitadel-demo-e2e-"));
 

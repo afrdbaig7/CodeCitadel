@@ -104,13 +104,20 @@ function requireProjectFile(root: string, relative: string, purpose: string): vo
 }
 
 /** The project must be complete before any act claims to have performed it. */
-function inspectProject(root: string): string {
+function inspectProject(root: string, explicitRunner?: string): string {
   requireProjectFile(root, "codecitadel.requirements.json", "the accepted requirement");
   requireProjectFile(root, "codecitadel.reproductions.json", "the declared reproduction");
   requireProjectFile(root, PATCH_NAME, "the labeled patch");
   requireProjectFile(root, path.join("src", "coupons.ts"), "the vulnerable service");
   requireProjectFile(root, path.join("reproductions", "coupon-race.test.ts"), "the concurrent check");
   requireProjectFile(root, path.join("test", "coupon.test.ts"), "the sequential checks");
+
+  if (explicitRunner !== undefined) {
+    if (!existsSync(explicitRunner)) {
+      throw new UsageError(`The specified runner does not exist at ${explicitRunner}.`);
+    }
+    return explicitRunner;
+  }
 
   const candidate = path.join(root, "node_modules", "vitest", "vitest.mjs");
   if (!existsSync(candidate)) {
@@ -207,8 +214,8 @@ export async function runDemoCouponRaceCommand(
       `The demo project at ${project} does not exist. Pass --project <dir>, or run this from the repository root.`,
     );
   }
-  const runner = options.runner ?? inspectProject(project);
   const artifacts = await prepareArtifacts(options.out);
+  const runner = inspectProject(project, options.runner);
 
   const acts: DemoAct[] = [];
   const record = (id: string, status: DemoActStatus, detail: string): void => {
