@@ -12,3 +12,4 @@ export * from "./api.js";
 export * from "./demo.js";
 export * from "./sarif.js";
 export * from "./evidence.js";
+export * from "./mutation.js";
