@@ -1,0 +1,62 @@
+name: CodeCitadel Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: codecitadel-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  verify:
+    name: Verification & SARIF
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.92.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+          run_install: false
+
+      - name: Install dependencies & build
+        run: |
+          pnpm install --frozen-lockfile
+          cargo build --release --package scanner-cli
+          pnpm build
+
+      - name: Run CodeCitadel Action
+        id: citadel
+        uses: ./
+        with:
+          path: .
+          fail-on: high
+          sarif-file: codecitadel-results.sarif
+          write-summary: true
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('codecitadel-results.sarif') != ''
+        with:
+          sarif_file: codecitadel-results.sarif
+          category: codecitadel-scanner
