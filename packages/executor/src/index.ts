@@ -54,3 +54,11 @@ export {
   type NormalizeInput,
   type NormalizedResults,
 } from "./vitest-report.js";
+export {
+  buildSandboxedEnvironment,
+  validateSandboxArtifact,
+  DEFAULT_SANDBOX_POLICY,
+  type SandboxPolicy,
+  type ResultChannelArtifact,
+} from "./sandbox.js";
+
