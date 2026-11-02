@@ -34,6 +34,7 @@ import {
 } from "./commands/reproduce.js";
 import { runDoctorCommand, type DoctorCommandOptions } from "./commands/doctor.js";
 import { runImpactCommand, type ImpactCommandOptions } from "./commands/impact.js";
+import { runMutateCommand, type MutateCommandOptions } from "./commands/mutate.js";
 import {
   runRequirementsAcceptCommand,
   runRequirementsCheckCommand,
@@ -127,6 +128,20 @@ function buildProgram(setExitCode: (code: number) => void): Command {
     )
     .action(async (pathArgument: string, options: RunCommandOptions) => {
       setExitCode(await runRunCommand(pathArgument, options));
+    });
+
+  program
+    .command("mutate")
+    .description("Execute mutation testing to identify test gaps and surviving mutants.")
+    .argument("[path]", "directory to analyze", ".")
+    .option("-f, --format <format>", "output format: text or json", "text")
+    .option("-o, --out <file>", "write the mutation report JSON to a file")
+    .option("--threshold <number>", "minimum acceptable mutation score percentage (0-100)")
+    .option("--max-mutants <n>", "maximum mutants to generate and evaluate", "100")
+    .option("--timeout-ms <ms>", "kill test run per mutant after this many milliseconds", "15000")
+    .option("--runner <path>", "path to node_modules/vitest/vitest.mjs in target project")
+    .action(async (pathArgument: string, options: MutateCommandOptions) => {
+      setExitCode(await runMutateCommand(pathArgument, options));
     });
 
   program
