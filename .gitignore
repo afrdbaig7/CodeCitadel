@@ -9,6 +9,7 @@ target/
 !.env.example
 coverage/
 .codecitadel/
+*.sarif
 
 # Local-only documentation and study notes (not tracked in remote repo)
 docs/study/
