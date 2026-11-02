@@ -47,6 +47,7 @@ import { runRunCommand, type RunCommandOptions } from "./commands/run.js";
 import { runScanCommand, type ScanCommandOptions } from "./commands/scan.js";
 import { runServeCommand, type ServeCommandOptions } from "./commands/serve.js";
 import { runUploadCommand, type UploadCommandOptions } from "./commands/upload.js";
+import { runDispatchCommand, type DispatchCommandOptions } from "./commands/dispatch.js";
 import { UsageError } from "./errors.js";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "info", "none"];
@@ -351,6 +352,24 @@ function buildProgram(setExitCode: (code: number) => void): Command {
     .option("-f, --format <format>", "output format: text or json", "text")
     .action(async (reportArgument: string, options: UploadCommandOptions) => {
       setExitCode(await runUploadCommand(reportArgument, options));
+    });
+
+  program
+    .command("dispatch")
+    .description(
+      "Dispatch an asynchronous managed verification run to the control plane. Returns 202 Accepted intent.",
+    )
+    .argument("[repository]", "name of the target repository", "default-repository")
+    .option("-s, --server <url>", "control plane base URL", "http://127.0.0.1:4317")
+    .option("-t, --token <token>", "bearer token for authorization")
+    .option("-c, --check <kind>", "check to execute: scan, impact, run, mutation", "scan")
+    .option("--commit <ref>", "git commit reference")
+    .option("--branch <ref>", "git branch reference")
+    .option("--timeout-ms <ms>", "execution deadline in milliseconds", "60000")
+    .option("-f, --format <format>", "output format: text or json", "text")
+    .option("-w, --wait", "poll status URL until execution completes or times out")
+    .action(async (repositoryArgument: string | undefined, options: DispatchCommandOptions) => {
+      setExitCode(await runDispatchCommand(repositoryArgument, options));
     });
 
   program
