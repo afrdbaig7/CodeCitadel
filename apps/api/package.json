@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@codecitadel/contracts": "workspace:*",
+    "@codecitadel/orchestrator": "workspace:*",
     "@codecitadel/storage": "workspace:*",
     "fastify": "5.12.7",
     "jose": "^6.2.13"

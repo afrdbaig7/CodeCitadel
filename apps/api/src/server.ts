@@ -1,7 +1,8 @@
 import {
   API_SCHEMA_VERSION, INLINE_ARTIFACT_BYTES, MAX_ARTIFACTS, MAX_ARTIFACT_BYTES, MAX_REPORT_BYTES, MAX_UPLOAD_BYTES,
   apiErrorSchema, healthResponseSchema, outcomeOf, payloadDigest, reportSchemaFor, reportUploadSchema,
-  runDetailResponseSchema, runListResponseSchema, uploadResponseSchema, type ApiErrorCode, type HealthResponse,
+  runDetailResponseSchema, runListResponseSchema, uploadResponseSchema, managedRunRequestSchema, managedRunResponseSchema,
+  type ApiErrorCode, type HealthResponse,
 } from "@codecitadel/contracts";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -142,6 +143,44 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const run = await store.insertRun({ organizationId: principal.id, repository: upload.repository, kind: upload.kind, origin: upload.origin, capturedAt: upload.capturedAt, receivedAt: new Date().toISOString(), reportJson, outcome: outcomeOf(upload.kind, upload.report), artifacts });
     await store.recordAudit({ organizationId: principal.id, actor: requestActor(request, principal), action: "run.upload", target: run.id });
     return reply.status(202).send(uploadResponseSchema.parse({ schemaVersion: API_SCHEMA_VERSION, run }));
+  });
+
+  app.post("/api/v1/runs/managed", async (request, reply) => {
+    const principal = await authenticate(options, verifier, request, reply); if (principal === null) return reply;
+    if (!authorize(principal, ["upload", "admin"], reply)) return reply;
+    const parsed = managedRunRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const where = issue && issue.path.length ? ` at ${issue.path.join(".")}` : "";
+      return fail(reply, 400, "invalid_request", `The managed run request is invalid${where}: ${issue?.message ?? "malformed body"}.`);
+    }
+    const { runId } = await store.createManagedRun({
+      organizationId: principal.id,
+      repository: parsed.data.repository,
+      check: parsed.data.check,
+      budget: parsed.data.budget,
+    });
+    await store.recordAudit({ organizationId: principal.id, actor: requestActor(request, principal), action: "run.managed_enqueue", target: runId });
+    return reply.status(202).send(
+      managedRunResponseSchema.parse({
+        schemaVersion: API_SCHEMA_VERSION,
+        runId,
+        status: "queued",
+        statusUrl: `/api/v1/runs/${runId}`,
+        queuedAt: new Date().toISOString(),
+      }),
+    );
+  });
+
+  app.post("/api/v1/runs/:id/cancel", async (request, reply) => {
+    const principal = await authenticate(options, verifier, request, reply); if (principal === null) return reply;
+    if (!authorize(principal, ["upload", "admin"], reply)) return reply;
+    const { id } = request.params as { id: string };
+    const detail = await store.getRun(principal.id, id);
+    if (detail === null) return fail(reply, 404, "not_found", `There is no run ${id} in this organization.`);
+    await store.updateRunStatus(principal.id, id, "cancelled", { outcome: "cancelled by user" });
+    await store.recordAudit({ organizationId: principal.id, actor: requestActor(request, principal), action: "run.cancel", target: id });
+    return reply.status(200).send({ schemaVersion: API_SCHEMA_VERSION, runId: id, status: "cancelled" });
   });
 
   app.post("/api/v1/runs/:id/artifacts/:name/upload", async (request, reply) => {

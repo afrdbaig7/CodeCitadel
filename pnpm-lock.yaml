@@ -26,6 +26,9 @@ importers:
       '@codecitadel/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@codecitadel/orchestrator':
+        specifier: workspace:*
+        version: link:../../packages/orchestrator
       '@codecitadel/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -173,6 +176,28 @@ importers:
       zod:
         specifier: 4.0.5
         version: 4.0.5
+
+  packages/orchestrator:
+    dependencies:
+      '@codecitadel/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@codecitadel/core':
+        specifier: workspace:*
+        version: link:../core
+      '@codecitadel/executor':
+        specifier: workspace:*
+        version: link:../executor
+      '@codecitadel/storage':
+        specifier: workspace:*
+        version: link:../storage
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.2
+      vitest:
+        specifier: ^3.0.7
+        version: 3.2.4(@types/node@24.19.2)(jiti@1.21.7)(tsx@4.23.15)
 
   packages/scanner-client:
     dependencies:
