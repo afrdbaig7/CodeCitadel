@@ -53,4 +53,12 @@ export {
   validateEvidenceBundle,
   type ReplayRecheckInput,
 } from "./evidence.js";
+export {
+  discoverMutantsInContent,
+  runMutationTesting,
+  MUTATION_OPERATORS,
+  type DiscoveredMutantCandidate,
+  type MutationOperator,
+  type RunMutationTestingOptions,
+} from "./mutation.js";
 export { CODECITADEL_VERSION } from "./version.js";

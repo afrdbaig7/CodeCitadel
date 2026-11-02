@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@codecitadel/contracts": "workspace:*",
+    "@codecitadel/executor": "workspace:*",
     "@codecitadel/scanner-client": "workspace:*",
     "fastify": "5.12.7"
   }

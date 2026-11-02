@@ -152,6 +152,9 @@ importers:
       '@codecitadel/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@codecitadel/executor':
+        specifier: workspace:*
+        version: link:../executor
       '@codecitadel/scanner-client':
         specifier: workspace:*
         version: link:../scanner-client
