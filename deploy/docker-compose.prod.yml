@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: codecitadel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: codecitadel_app
+      POSTGRES_PASSWORD: change_me_in_prod
+      POSTGRES_DB: codecitadel
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codecitadel_app -d codecitadel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.23.0
+    container_name: codecitadel-pgbouncer
+    restart: unless-stopped
+    ports:
+      - "6432:6432"
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    environment:
+      DB_USER: codecitadel_app
+      DB_PASSWORD: change_me_in_prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: codecitadel
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 10000
+      DEFAULT_POOL_SIZE: 25
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    container_name: codecitadel-valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkeydata:/data
+    command: ["valkey-server", "--save", "60", "1", "--loglevel", "notice"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2024-10-02T17-50-41Z
+    container_name: codecitadel-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    volumes:
+      - miniodata:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: codecitadel/api:latest
+    container_name: codecitadel-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      STORAGE_DRIVER: postgres
+      DATABASE_URL: postgres://codecitadel_app:change_me_in_prod@pgbouncer:6432/codecitadel?sslmode=disable
+      VALKEY_URL: redis://valkey:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: codecitadel-artifacts
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadminpassword
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+
+  worker:
+    image: codecitadel/worker:latest
+    container_name: codecitadel-worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://codecitadel_app:change_me_in_prod@pgbouncer:6432/codecitadel?sslmode=disable
+      VALKEY_URL: redis://valkey:6379
+      WORKER_POLL_INTERVAL_MS: 500
+      WORKER_BATCH_SIZE: 10
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: codecitadel-artifacts
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadminpassword
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  valkeydata:
+  miniodata:

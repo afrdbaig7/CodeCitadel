@@ -1,0 +1,8 @@
+;; CodeCitadel PgBouncer user credentials file
+;; Format: "username" "password_hash_or_plaintext"
+;; In production, populate this file with SCRAM-SHA-256 hashes generated from PostgreSQL:
+;; SELECT concat('"', usename, '" "', passwd, '"') FROM pg_shadow;
+
+"codecitadel_app" "SCRAM-SHA-256$4096:production_secret_salt$mock_hash_replace_in_prod"
+"pgbouncer_admin" "SCRAM-SHA-256$4096:admin_salt$mock_hash_replace_in_prod"
+"prometheus_exporter" "SCRAM-SHA-256$4096:stats_salt$mock_hash_replace_in_prod"
