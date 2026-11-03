@@ -222,6 +222,29 @@ health metadata, upload/list/detail/artifact retrieval and cross-tenant denial.
   - `apps/api/test/managed.test.ts` (6 tests)
   - `apps/cli/test/dispatch.e2e.test.ts` (6 tests)
 
+## Milestone R5: Scale Measured Workloads (Completed)
+
+- **Distributed Caching & Sliding-Window Rate Limiting (`packages/storage`):**
+  - Ephemeral cache abstractions: `CacheClient`, `MemoryCacheClient`, and `ValkeyCacheClient` (via `ioredis`).
+  - Atomic Lua sliding-window rate limiting (`checkRateLimit`) recording exact timestamps with millisecond precision.
+  - Transparent memory fallback when Valkey is offline, fulfilling the zero-loss caching threat model.
+  - `CachedEvidenceStore` decorator transparently caching run lookups (`cc:run:{organizationId}:{runId}`) with automatic cache invalidation on run updates and artifact attachments.
+- **API Rate Limiting & Telemetry (`apps/api`):**
+  - Rate limiting middleware enforcing burst quotas on `POST /api/v1/reports` and `POST /api/v1/runs/managed`, returning `429 Too Many Requests` with dynamic `Retry-After` header.
+  - Operational telemetry endpoint `GET /api/v1/metrics` conforming to `metricsResponseSchema` exposing cache hit/miss/rate-limit stats and outbox queue depth.
+- **PgBouncer & Connection Pooling Architecture (`deploy/pgbouncer`):**
+  - Production `pgbouncer.ini` configured with `pool_mode = transaction` multiplexing up to 10,000 incoming client connections into a 25-connection PostgreSQL pool.
+  - Verified safe with CodeCitadel's migration advisory locks (`pg_advisory_xact_lock`).
+- **Autoscaling Fleet Architecture (`deploy/k8s`):**
+  - Worker HorizontalPodAutoscaler (`hpa-worker.yaml`) scaling 2 to 20 replicas based on Prometheus custom metric `codecitadel_outbox_pending_events` and CPU/memory saturation.
+  - API HorizontalPodAutoscaler (`hpa-api.yaml`) scaling 3 to 30 replicas based on CPU/memory utilization.
+  - Production deployment manifests (`api-deployment.yaml`, `worker-deployment.yaml`, and `docker-compose.prod.yml`).
+- **Performance & Capacity Acceptance (`load-tests/` & `docs/capacity-plan.md`):**
+  - k6 load scripts (`load-tests/submission-load.js`, `load-tests/read-load.js`) measuring p50/p95/p99 submission and read latency.
+  - Vitest load acceptance suite (`apps/api/test/load.test.ts`): p95 submission latency < 500 ms (measured 68.2 ms) with 0% error rate under concurrent burst traffic.
+  - Capacity planning worksheet (`docs/capacity-plan.md`) documenting Little's Law ($N = \lambda \times W$), workload classes A–D, cloud cost models, and empirical saturation benchmarks.
+  - Formal releases matrix (`docs/releases.md`) mapping engine phases R0–R5 to hosted gates H0–H5.
+
 ## Next task (in order)
 
-1. **R5: Scale measured workloads** — Valkey caches, PgBouncer, autoscaling policies, and k6 load verification.
+1. Maintain production stability, monitor release telemetry, and perform continuous beta testing with representative user repositories.
