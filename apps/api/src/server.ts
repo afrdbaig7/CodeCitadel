@@ -1,13 +1,20 @@
 import {
   API_SCHEMA_VERSION, INLINE_ARTIFACT_BYTES, MAX_ARTIFACTS, MAX_ARTIFACT_BYTES, MAX_REPORT_BYTES, MAX_UPLOAD_BYTES,
-  apiErrorSchema, healthResponseSchema, outcomeOf, payloadDigest, reportSchemaFor, reportUploadSchema,
+  apiErrorSchema, healthResponseSchema, metricsResponseSchema, outcomeOf, payloadDigest, reportSchemaFor, reportUploadSchema,
   runDetailResponseSchema, runListResponseSchema, uploadResponseSchema, managedRunRequestSchema, managedRunResponseSchema,
-  type ApiErrorCode, type HealthResponse,
+  type ApiErrorCode, type HealthResponse, type MetricsResponse,
 } from "@codecitadel/contracts";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { S3ArtifactStorage, type AuthPrincipal, type EvidenceStore } from "@codecitadel/storage";
+import {
+  CachedEvidenceStore,
+  createCacheClient,
+  S3ArtifactStorage,
+  type AuthPrincipal,
+  type CacheClient,
+  type EvidenceStore,
+} from "@codecitadel/storage";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { OidcVerifier, type OidcOptions } from "./oidc.js";
 
@@ -19,6 +26,8 @@ export interface ServerOptions {
   oidc?: OidcOptions;
   bootstrapAdmin?: { issuer: string; subject: string };
   objectStorage?: S3ArtifactStorage;
+  cache?: CacheClient;
+  rateLimit?: { limit: number; windowSeconds: number };
 }
 
 const SESSION_COOKIE = "codecitadel_session";
@@ -92,7 +101,11 @@ async function sendDashboardFile(reply: FastifyReply, file: string, cacheControl
 }
 
 export function buildServer(options: ServerOptions): FastifyInstance {
-  const { store } = options;
+  const cache = options.cache ?? createCacheClient();
+  const store = options.store instanceof CachedEvidenceStore
+    ? options.store
+    : new CachedEvidenceStore(options.store, cache);
+  const rateLimitConfig = options.rateLimit ?? { limit: 120, windowSeconds: 60 };
   const verifier = options.oidc === undefined ? undefined : new OidcVerifier(options.oidc);
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: MAX_UPLOAD_BYTES });
   app.setErrorHandler((error: Error & { code?: string; statusCode?: number }, _request, reply) => {
@@ -108,6 +121,35 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     limits: { maxUploadBytes: MAX_UPLOAD_BYTES, maxArtifacts: MAX_ARTIFACTS, maxArtifactBytes: MAX_ARTIFACT_BYTES, inlineArtifactBytes: INLINE_ARTIFACT_BYTES },
     limitations: [...BASE_LIMITATIONS, ...(options.objectStorage === undefined ? ["Artifacts use local filesystem storage and are not encrypted at rest."] : []), ...(options.oidc === undefined ? ["OIDC is disabled; database-issued bearer tokens authenticate requests."] : [])],
   }));
+
+  app.get("/api/v1/metrics", async (_request, reply): Promise<MetricsResponse> => {
+    const stats = cache.getStats();
+    const total = stats.hits + stats.misses;
+    const hitRatio = total > 0 ? Number((stats.hits / total).toFixed(3)) : 0;
+    let pendingEvents = 0;
+    try {
+      const pending = await store.claimOutboxEvents(1);
+      pendingEvents = pending.length;
+    } catch {
+      // Offline or SQLite mock without outbox
+    }
+    return metricsResponseSchema.parse({
+      schemaVersion: API_SCHEMA_VERSION,
+      status: "ok",
+      queue: {
+        pendingOutboxEvents: pendingEvents,
+      },
+      cache: {
+        hits: stats.hits,
+        misses: stats.misses,
+        hitRatio,
+        rateLimitHits: stats.rateLimitHits,
+      },
+      database: {
+        driver: store.driver,
+      },
+    });
+  });
 
   if (options.dashboard !== undefined) {
     const root = path.resolve(options.dashboard.dir); const assets = path.join(root, "assets");
@@ -127,6 +169,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.post("/api/v1/reports", async (request, reply) => {
     const principal = await authenticate(options, verifier, request, reply); if (principal === null) return reply;
     if (!authorize(principal, ["upload", "admin"], reply)) return reply;
+    const rate = await cache.checkRateLimit(`upload:${principal.id}`, rateLimitConfig.limit, rateLimitConfig.windowSeconds);
+    if (!rate.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000));
+      reply.header("retry-after", String(retryAfter));
+      return fail(reply, 429, "rate_limited", "Rate limit exceeded. Please wait before submitting more verification runs.");
+    }
     const envelope = reportUploadSchema.safeParse(request.body);
     if (!envelope.success) { const issue = envelope.error.issues[0]; const where = issue && issue.path.length ? ` at ${issue.path.join(".")}` : ""; return fail(reply, 400, "invalid_request", `The upload does not match the API schema${where}: ${issue?.message ?? "invalid body"}.`); }
     const upload = envelope.data; const report = reportSchemaFor(upload.kind).safeParse(upload.report);
@@ -148,6 +196,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.post("/api/v1/runs/managed", async (request, reply) => {
     const principal = await authenticate(options, verifier, request, reply); if (principal === null) return reply;
     if (!authorize(principal, ["upload", "admin"], reply)) return reply;
+    const rate = await cache.checkRateLimit(`managed:${principal.id}`, rateLimitConfig.limit, rateLimitConfig.windowSeconds);
+    if (!rate.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000));
+      reply.header("retry-after", String(retryAfter));
+      return fail(reply, 429, "rate_limited", "Rate limit exceeded. Please wait before submitting more verification runs.");
+    }
     const parsed = managedRunRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
