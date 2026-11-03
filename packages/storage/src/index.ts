@@ -8,6 +8,15 @@ export {
 export { PostgresReportStore } from "./postgres-store.js";
 export { S3ArtifactStorage, type PresignedArtifactUpload, type S3ArtifactStorageOptions } from "./s3-artifacts.js";
 export {
+  createCacheClient,
+  MemoryCacheClient,
+  ValkeyCacheClient,
+  type CacheClient,
+  type CacheStats,
+  type RateLimitResult,
+} from "./cache.js";
+export { CachedEvidenceStore } from "./cached-store.js";
+export {
   ReportStore,
   type ArtifactInput,
   type StoredArtifact,

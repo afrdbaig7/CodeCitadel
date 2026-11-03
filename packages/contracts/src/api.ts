@@ -184,6 +184,24 @@ export const healthResponseSchema = z.strictObject({
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
+export const metricsResponseSchema = z.strictObject({
+  schemaVersion: z.literal(API_SCHEMA_VERSION),
+  status: z.literal("ok"),
+  queue: z.strictObject({
+    pendingOutboxEvents: z.number().int().nonnegative(),
+  }),
+  cache: z.strictObject({
+    hits: z.number().int().nonnegative(),
+    misses: z.number().int().nonnegative(),
+    hitRatio: z.number().min(0).max(1),
+    rateLimitHits: z.number().int().nonnegative(),
+  }),
+  database: z.strictObject({
+    driver: z.enum(["sqlite", "postgres"]),
+  }),
+});
+export type MetricsResponse = z.infer<typeof metricsResponseSchema>;
+
 export const apiErrorCodeSchema = z.enum([
   "unauthorized",
   "not_found",
@@ -191,6 +209,7 @@ export const apiErrorCodeSchema = z.enum([
   "unsupported_kind",
   "too_large",
   "conflict",
+  "rate_limited",
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 
