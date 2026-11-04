@@ -74,17 +74,17 @@ export const App: React.FC = () => {
   const meta = WORKSPACE_TITLE[workspace];
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-[#faf8f5] text-stone-800">
       <Header activeWorkspace={workspace} onSelectWorkspace={setWorkspace} health={health} />
 
       <main className="mx-auto max-w-7xl px-6 py-6">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-white">{meta.title}</h1>
-            <p className="text-xs text-slate-400">{meta.question}</p>
+            <h1 className="text-lg font-semibold tracking-tight text-stone-900">{meta.title}</h1>
+            <p className="text-xs text-stone-500">{meta.question}</p>
           </div>
           {source === "preview" && (
-            <div className="flex items-center space-x-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-1 text-[11px] text-amber-200">
+            <div className="flex items-center space-x-1.5 rounded-md border border-[#edd7af] bg-[#fcf8ef] px-2.5 py-1 text-[11px] text-[#87581b] shadow-sm">
               <Info className="h-3.5 w-3.5" />
               <span>
                 Preview dataset: {health.status === "offline" ? "the local API is not reachable." : "no runs are stored yet."}{" "}
@@ -110,18 +110,18 @@ export const App: React.FC = () => {
           <RepairsWorkspace proposals={[SAMPLE_PATCH_PROPOSAL, SAMPLE_WEAKENING_PATCH]} />
         )}
 
-        <footer className="mt-8 border-t border-slate-800/80 pt-4 text-[11px] leading-relaxed text-slate-500">
+        <footer className="mt-8 border-t border-[#e8e2d4] pt-4 text-[11px] leading-relaxed text-stone-500">
           <p>
             CodeCitadel validates and displays evidence; it does not decide that a change is correct. Findings, diffs,
             and test results are what a command recorded, and each view names the artifact it read.
           </p>
-          <p className="mt-1 font-mono">
+          <p className="mt-1 font-mono text-stone-600">
             {health.status === "ok"
               ? `api ${health.serverUrl} · schema ${health.schemaVersion} · storage ${health.driver}`
               : "api offline · start it with codecitadel serve"}
           </p>
           {health.limitations.length > 0 && (
-            <ul className="mt-2 list-inside list-disc space-y-0.5">
+            <ul className="mt-2 list-inside list-disc space-y-0.5 text-stone-500">
               {health.limitations.map((limitation) => (
                 <li key={limitation}>{limitation}</li>
               ))}

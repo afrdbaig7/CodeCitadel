@@ -4,59 +4,95 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 antialiased;
+    background-color: #faf8f5;
+    color: #292524; /* stone-800 */
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Custom scrollbar */
+/* Refined, non-intrusive scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #f5f1e8;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.6);
+  background: #dbcfb8;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: #c7b699;
 }
 
-/* Glassmorphism helpers */
+/* Cream & Light architectural panel styles */
+.cream-panel,
 .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #ffffff;
+  border: 1px solid #ebe4d8;
+  box-shadow: 0 1px 3px 0 rgba(45, 35, 25, 0.04);
 }
 
+.cream-card,
 .glass-card {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: #ffffff;
+  border: 1px solid #ede7dc;
+  box-shadow: 0 1px 2px 0 rgba(45, 35, 25, 0.03);
 }
 
+.cream-card-subtle {
+  background-color: #fbf9f5;
+  border: 1px solid #ebe5da;
+}
+
+.cream-card-hover,
 .glass-card-hover {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.cream-card-hover:hover,
 .glass-card-hover:hover {
-  background: rgba(30, 41, 59, 0.75);
-  border-color: rgba(34, 197, 94, 0.3);
+  background-color: #ffffff;
+  border-color: #d8cdba;
   transform: translateY(-1px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(34, 197, 94, 0.15);
+  box-shadow: 0 4px 14px -2px rgba(50, 40, 25, 0.06);
 }
 
-.badge-glow-green {
-  box-shadow: 0 0 12px -2px rgba(34, 197, 94, 0.4);
+/* Muted, natural badges (no harsh or shiny glows) */
+.badge-sage {
+  background-color: #eaf3ec;
+  color: #245237;
+  border: 1px solid #cce1d2;
 }
 
-.badge-glow-red {
-  box-shadow: 0 0 12px -2px rgba(239, 68, 68, 0.4);
+.badge-terracotta {
+  background-color: #fdf1ed;
+  color: #9c3319;
+  border: 1px solid #f6cfc4;
+}
+
+.badge-sand {
+  background-color: #fbf6eb;
+  color: #8c5b13;
+  border: 1px solid #f2e2be;
+}
+
+.badge-slate {
+  background-color: #f1f5f8;
+  color: #33536b;
+  border: 1px solid #d4e0e9;
+}
+
+.badge-cream {
+  background-color: #f5f1e8;
+  color: #615243;
+  border: 1px solid #e5dcce;
 }
 
 .badge-glow-amber {

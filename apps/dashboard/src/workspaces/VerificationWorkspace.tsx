@@ -24,22 +24,22 @@ interface VerificationWorkspaceProps {
 }
 
 const STATUS_STYLE: Record<TestResultItem["status"], { icon: React.ReactNode; tone: string; label: string }> = {
-  passed: { icon: <CheckCircle2 className="h-3.5 w-3.5" />, tone: "text-emerald-300", label: "passed" },
-  failed: { icon: <XCircle className="h-3.5 w-3.5" />, tone: "text-rose-300", label: "failed" },
-  timed_out: { icon: <TimerOff className="h-3.5 w-3.5" />, tone: "text-amber-300", label: "timed out" },
-  errored: { icon: <AlertOctagon className="h-3.5 w-3.5" />, tone: "text-orange-300", label: "errored" },
-  cancelled: { icon: <MinusCircle className="h-3.5 w-3.5" />, tone: "text-slate-400", label: "cancelled" },
-  skipped: { icon: <MinusCircle className="h-3.5 w-3.5" />, tone: "text-slate-400", label: "skipped" },
+  passed: { icon: <CheckCircle2 className="h-3.5 w-3.5" />, tone: "text-[#245836]", label: "passed" },
+  failed: { icon: <XCircle className="h-3.5 w-3.5" />, tone: "text-[#9e331c]", label: "failed" },
+  timed_out: { icon: <TimerOff className="h-3.5 w-3.5" />, tone: "text-[#8e5812]", label: "timed out" },
+  errored: { icon: <AlertOctagon className="h-3.5 w-3.5" />, tone: "text-[#9c4c1d]", label: "errored" },
+  cancelled: { icon: <MinusCircle className="h-3.5 w-3.5" />, tone: "text-stone-400", label: "cancelled" },
+  skipped: { icon: <MinusCircle className="h-3.5 w-3.5" />, tone: "text-stone-400", label: "skipped" },
 };
 
 const OUTCOME_TONE: Record<VerificationRunItem["outcome"], string> = {
-  passed: "text-emerald-300",
-  verified: "text-emerald-300",
-  reproduced: "text-sky-300",
-  failed: "text-rose-300",
-  not_verified: "text-rose-300",
-  not_reproduced: "text-rose-300",
-  inconclusive: "text-amber-300",
+  passed: "text-[#245836]",
+  verified: "text-[#245836]",
+  reproduced: "text-[#275373]",
+  failed: "text-[#9e331c]",
+  not_verified: "text-[#9e331c]",
+  not_reproduced: "text-[#9e331c]",
+  inconclusive: "text-[#8e5812]",
 };
 
 function formatDuration(ms: number): string {
@@ -61,8 +61,6 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
   const selected = React.useMemo(() => {
     const base = runs.find((run) => run.id === selectedId) ?? runs[0] ?? null;
     if (base === null) return null;
-    // A stored report's per-test detail is fetched on demand; the list row alone
-    // carries no results, so nothing is invented here.
     return details[base.id] ?? base;
   }, [runs, selectedId, details]);
 
@@ -92,22 +90,22 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
   const slowest = results.reduce((worst, result) => Math.max(worst, result.durationMs), 0);
   const reproductionTone =
     reproduction.verdict === "reproduced"
-      ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
+      ? "border-[#c5dbe8] bg-[#eef4f8] text-[#25506f]"
       : reproduction.verdict === "not_reproduced"
-        ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
-        : "border-amber-500/40 bg-amber-500/10 text-amber-300";
+        ? "border-[#f4c6bd] bg-[#fcf0ed] text-[#932c18]"
+        : "border-[#edd7b0] bg-[#fdf7ee] text-[#8c5813]";
 
   return (
     <div className="space-y-6">
       <section className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="glass-panel max-h-[34rem] overflow-auto rounded-xl">
-          <div className="sticky top-0 flex items-center justify-between border-b border-slate-800/80 bg-slate-900/95 px-4 py-3 backdrop-blur">
-            <h2 className="text-sm font-semibold text-white">Stored runs</h2>
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+        <div className="cream-panel max-h-[34rem] overflow-auto rounded-xl shadow-card">
+          <div className="sticky top-0 flex items-center justify-between border-b border-[#eae1d3] bg-[#faf7f0] px-4 py-3 backdrop-blur">
+            <h2 className="text-sm font-semibold text-stone-900">Stored runs</h2>
+            <span className="rounded bg-[#f0e9dc] px-2 py-0.5 font-mono text-[10px] text-stone-700">
               {source}
             </span>
           </div>
-          <ul className="divide-y divide-slate-800/60">
+          <ul className="divide-y divide-[#ede6d8] bg-white">
             {runs.map((run) => {
               const active = selected?.id === run.id;
               return (
@@ -115,17 +113,17 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
                   <button
                     onClick={() => setSelectedId(run.id)}
                     className={`w-full px-4 py-3 text-left transition-colors ${
-                      active ? "bg-slate-800/70" : "hover:bg-slate-800/30"
+                      active ? "bg-[#f5ede0]" : "hover:bg-[#faf6ee]"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-[11px] text-slate-300">{run.id}</span>
+                      <span className="font-mono text-[11px] text-stone-900 font-medium">{run.id}</span>
                       <span className={`text-[10px] font-semibold uppercase ${OUTCOME_TONE[run.outcome]}`}>
                         {run.outcome}
                       </span>
                     </div>
-                    <div className="mt-1 flex items-center space-x-2 text-[10px] text-slate-500">
-                      <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono">{run.kind}</span>
+                    <div className="mt-1 flex items-center space-x-2 text-[10px] text-stone-500">
+                      <span className="rounded bg-[#f2ecde] px-1.5 py-0.5 font-mono text-stone-700">{run.kind}</span>
                       {run.repository !== undefined && <span>{run.repository}</span>}
                       <span>{new Date(run.capturedAt).toLocaleString()}</span>
                     </div>
@@ -133,40 +131,40 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
                 </li>
               );
             })}
-            {runs.length === 0 && <li className="p-4 text-xs text-slate-500">No runs have been uploaded.</li>}
+            {runs.length === 0 && <li className="p-4 text-xs text-stone-500">No runs have been uploaded.</li>}
           </ul>
         </div>
 
-        <div className="glass-panel rounded-xl">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 px-4 py-3">
+        <div className="cream-panel rounded-xl shadow-card overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eae1d3] bg-[#faf7f0] px-4 py-3">
             <div className="flex items-center space-x-2">
-              <TestTube2 className="h-4 w-4 text-citadel-400" />
-              <h2 className="text-sm font-semibold text-white">Execution console</h2>
+              <TestTube2 className="h-4 w-4 text-[#2d5c3d]" />
+              <h2 className="text-sm font-semibold text-stone-900">Execution console</h2>
               {selected !== null && (
-                <span className="font-mono text-[10px] text-slate-500">
+                <span className="font-mono text-[10px] text-stone-500">
                   isolation {selected.isolation} · {formatDuration(selected.durationMs)}
                 </span>
               )}
             </div>
             {selected !== null && selected.results.length > 0 && (
               <div className="flex items-center space-x-3 font-mono text-[11px]">
-                <span className="text-emerald-400">{selected.passedCount} passed</span>
-                <span className="text-rose-400">{selected.failedCount} not passed</span>
-                <span className="text-slate-500">{selected.totalTests} total</span>
+                <span className="text-[#255b37] font-semibold">{selected.passedCount} passed</span>
+                <span className="text-[#9c341f] font-semibold">{selected.failedCount} not passed</span>
+                <span className="text-stone-500">{selected.totalTests} total</span>
               </div>
             )}
           </div>
 
           {loading && (
-            <div className="flex items-center space-x-2 p-6 text-xs text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="flex items-center space-x-2 p-6 text-xs text-stone-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#2d5c3d]" />
               <span>Reading the stored report…</span>
             </div>
           )}
-          {detailError !== null && <p className="p-6 text-xs text-amber-300">{detailError}</p>}
+          {detailError !== null && <p className="p-6 text-xs text-[#8c5813]">{detailError}</p>}
 
           {!loading && selected !== null && results.length === 0 && (
-            <div className="p-6 text-xs leading-relaxed text-slate-500">
+            <div className="p-6 text-xs leading-relaxed text-stone-500 bg-white">
               <p>
                 This {selected.kind} report recorded an outcome of{" "}
                 <span className={`font-mono ${OUTCOME_TONE[selected.outcome]}`}>{selected.outcome}</span> but no
@@ -180,21 +178,21 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
           )}
 
           {results.length > 0 && (
-            <div className="max-h-[26rem] overflow-auto">
+            <div className="max-h-[26rem] overflow-auto bg-white">
               <table className="w-full text-left text-xs">
-                <thead className="sticky top-0 bg-slate-900/95 text-[10px] uppercase tracking-wider text-slate-500 backdrop-blur">
+                <thead className="sticky top-0 bg-[#f7f3eb] text-[10px] uppercase tracking-wider text-stone-500 border-b border-[#eae1d3]">
                   <tr>
-                    <th className="px-4 py-2 font-medium">Status</th>
-                    <th className="px-4 py-2 font-medium">Test</th>
-                    <th className="px-4 py-2 font-medium">Fingerprint</th>
-                    <th className="px-4 py-2 font-medium">Duration</th>
+                    <th className="px-4 py-2 font-semibold">Status</th>
+                    <th className="px-4 py-2 font-semibold">Test</th>
+                    <th className="px-4 py-2 font-semibold">Fingerprint</th>
+                    <th className="px-4 py-2 font-semibold">Duration</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((result) => {
                     const style = STATUS_STYLE[result.status];
                     return (
-                      <tr key={`${result.fingerprint}:${result.name}`} className="border-t border-slate-800/50">
+                      <tr key={`${result.fingerprint}:${result.name}`} className="border-t border-[#f0ebe0]">
                         <td className="px-4 py-2.5">
                           <span className={`inline-flex items-center space-x-1 ${style.tone}`}>
                             {style.icon}
@@ -202,23 +200,23 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
-                          <div className="text-slate-200">{result.name}</div>
-                          <div className="font-mono text-[10px] text-slate-500">{result.file}</div>
+                          <div className="text-stone-900 font-medium">{result.name}</div>
+                          <div className="font-mono text-[10px] text-stone-500">{result.file}</div>
                           {result.errorMessage !== undefined && (
-                            <pre className="mt-1 max-w-2xl whitespace-pre-wrap rounded border border-rose-500/20 bg-rose-500/5 p-2 font-mono text-[10px] text-rose-200">
+                            <pre className="mt-1 max-w-2xl whitespace-pre-wrap rounded border border-[#f5c6be] bg-[#fdf2ef] p-2 font-mono text-[10px] text-[#8e2916]">
                               {result.errorMessage}
                             </pre>
                           )}
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-[10px] text-slate-400">{result.fingerprint}</td>
+                        <td className="px-4 py-2.5 font-mono text-[10px] text-stone-500">{result.fingerprint}</td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center space-x-2">
-                            <span className="w-12 font-mono text-[10px] text-slate-400">
+                            <span className="w-12 font-mono text-[10px] text-stone-500">
                               {formatDuration(result.durationMs)}
                             </span>
-                            <div className="h-1 w-20 overflow-hidden rounded-full bg-slate-800">
+                            <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[#ebe4d6]">
                               <div
-                                className={`h-full rounded-full ${result.status === "passed" ? "bg-emerald-400" : "bg-rose-400"}`}
+                                className={`h-full rounded-full ${result.status === "passed" ? "bg-[#2f6542]" : "bg-[#a6341f]"}`}
                                 style={{ width: `${slowest === 0 ? 0 : Math.max(4, (result.durationMs / slowest) * 100)}%` }}
                               />
                             </div>
@@ -235,51 +233,51 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="glass-panel rounded-xl p-5">
+        <div className="cream-panel rounded-xl p-5 shadow-card bg-white">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Repeat className="h-4 w-4 text-sky-400" />
-              <h2 className="text-sm font-semibold text-white">Reproduction inspector</h2>
+              <Repeat className="h-4 w-4 text-[#265775]" />
+              <h2 className="text-sm font-semibold text-stone-900">Reproduction inspector</h2>
             </div>
             <span className={`rounded border px-2 py-0.5 text-[10px] font-semibold uppercase ${reproductionTone}`}>
               {reproduction.verdict.replace("_", " ")}
             </span>
           </div>
-          <h3 className="font-mono text-[11px] text-citadel-300">{reproduction.id}</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">{reproduction.title}</p>
+          <h3 className="font-mono text-[11px] text-[#285737] font-semibold">{reproduction.id}</h3>
+          <p className="mt-1 text-xs leading-relaxed text-stone-700">{reproduction.title}</p>
 
           <dl className="mt-4 space-y-3 text-xs">
             <div>
-              <dt className="text-[10px] uppercase tracking-wider text-slate-500">Expected</dt>
-              <dd className="mt-0.5 text-slate-300">{reproduction.expected}</dd>
+              <dt className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Expected</dt>
+              <dd className="mt-0.5 text-stone-800">{reproduction.expected}</dd>
             </div>
             <div>
-              <dt className="text-[10px] uppercase tracking-wider text-slate-500">Observed</dt>
-              <dd className="mt-0.5 text-slate-300">{reproduction.observed}</dd>
+              <dt className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Observed</dt>
+              <dd className="mt-0.5 text-stone-800">{reproduction.observed}</dd>
             </div>
-            <div className="flex items-center space-x-4 text-[11px] text-slate-400">
+            <div className="flex items-center space-x-4 text-[11px] text-stone-600">
               <span>
-                attempts <span className="font-mono text-slate-200">{reproduction.attempts}</span>
+                attempts <span className="font-mono font-semibold text-stone-800">{reproduction.attempts}</span>
               </span>
               <span>
-                failing <span className="font-mono text-rose-300">{reproduction.failingAttempts}</span>
+                failing <span className="font-mono font-semibold text-[#9e331c]">{reproduction.failingAttempts}</span>
               </span>
               <span>
-                requirement <span className="font-mono text-citadel-300">{reproduction.requirementId}</span>
+                requirement <span className="font-mono font-semibold text-[#285737]">{reproduction.requirementId}</span>
               </span>
             </div>
           </dl>
 
-          <div className="mt-4 border-t border-slate-800 pt-3 font-mono text-[10px] text-slate-500">
+          <div className="mt-4 border-t border-[#ede7db] pt-3 font-mono text-[10px] text-stone-500">
             <div>{reproduction.testPath}</div>
-            <div className="text-slate-400">{reproduction.testName}</div>
-            <div className="mt-1 flex items-center space-x-1">
+            <div className="text-stone-700">{reproduction.testName}</div>
+            <div className="mt-1 flex items-center space-x-1 text-stone-400">
               <Fingerprint className="h-3 w-3" />
               <span>{reproduction.fingerprint}</span>
             </div>
           </div>
           {reproduction.verdict === "inconclusive" && (
-            <p className="mt-3 flex items-start space-x-1.5 rounded border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-amber-200">
+            <p className="mt-3 flex items-start space-x-1.5 rounded border border-[#edd7b0] bg-[#fdf7ee] p-2 text-[11px] text-[#8c5813]">
               <ShieldQuestion className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
                 Nothing was established: the run errored, timed out, or reported no result for the named test. That is
@@ -289,38 +287,38 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
           )}
         </div>
 
-        <div className="glass-panel rounded-xl p-5">
+        <div className="cream-panel rounded-xl p-5 shadow-card bg-white">
           <div className="mb-3 flex items-center space-x-2">
-            <FileArchive className="h-4 w-4 text-citadel-400" />
-            <h2 className="text-sm font-semibold text-white">Evidence bundles</h2>
+            <FileArchive className="h-4 w-4 text-[#2d5c3d]" />
+            <h2 className="text-sm font-semibold text-stone-900">Evidence bundles</h2>
           </div>
           <div className="space-y-3">
             {bundles.map((bundle) => (
-              <div key={bundle.id} className="glass-card rounded-lg p-3">
+              <div key={bundle.id} className="cream-card rounded-lg p-3 shadow-card">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] text-slate-200">{bundle.id}</span>
+                  <span className="font-mono text-[11px] text-stone-900 font-semibold">{bundle.id}</span>
                   <span
-                    className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                    className={`rounded border px-2 py-0.5 text-[10px] font-semibold uppercase ${
                       bundle.verified
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                        : "border-rose-500/40 bg-rose-500/10 text-rose-300"
+                        ? "border-[#cae2cf] bg-[#edf6ef] text-[#1e5430]"
+                        : "border-[#f5c6bd] bg-[#fdf0ed] text-[#932c18]"
                     }`}
                   >
                     {bundle.verified ? "digest verified" : "digest mismatch"}
                   </span>
                 </div>
-                <div className="mt-1 font-mono text-[10px] text-slate-500">{bundle.kind}</div>
-                <div className="mt-2 space-y-1 font-mono text-[10px] text-slate-400">
+                <div className="mt-1 font-mono text-[10px] text-stone-500">{bundle.kind}</div>
+                <div className="mt-2 space-y-1 font-mono text-[10px] text-stone-600">
                   <div>report {bundle.reportPath}</div>
                   <div>bundle {bundle.bundlePath}</div>
                   <div className="truncate">sha256 {bundle.digest.replace("sha256:", "")}</div>
                 </div>
                 {bundle.artifacts.length > 0 && (
-                  <ul className="mt-2 space-y-1 border-t border-slate-800 pt-2">
+                  <ul className="mt-2 space-y-1 border-t border-[#ede7db] pt-2">
                     {bundle.artifacts.map((artifact) => (
                       <li key={artifact.name} className="flex items-center justify-between font-mono text-[10px]">
-                        <span className="text-slate-300">{artifact.name}</span>
-                        <span className="text-slate-500">
+                        <span className="text-stone-700">{artifact.name}</span>
+                        <span className="text-stone-400">
                           {artifact.bytes} B · {artifact.digest}
                         </span>
                       </li>
@@ -329,9 +327,9 @@ export const VerificationWorkspace: React.FC<VerificationWorkspaceProps> = ({
                 )}
               </div>
             ))}
-            {bundles.length === 0 && <p className="text-xs text-slate-500">No bundles have been exported.</p>}
+            {bundles.length === 0 && <p className="text-xs text-stone-400">No bundles have been exported.</p>}
           </div>
-          <p className="mt-4 flex items-center space-x-1.5 text-[10px] text-slate-500">
+          <p className="mt-4 flex items-center space-x-1.5 text-[10px] text-stone-500">
             <Clock className="h-3 w-3" />
             <span>
               A bundle records a claim. Replaying it re-obtains the result; the digest only proves the bytes are the

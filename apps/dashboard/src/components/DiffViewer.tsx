@@ -62,14 +62,14 @@ function highlight(text: string): React.ReactNode[] {
     if (start > cursor) nodes.push(text.slice(cursor, start));
     const [token, comment, string, keyword, number] = match;
     const className = comment
-      ? "text-slate-500 italic"
+      ? "text-stone-400 italic"
       : string
-        ? "text-amber-300"
+        ? "text-[#8e5218]"
         : keyword
-          ? "text-sky-300"
+          ? "text-[#245373] font-medium"
           : number
-            ? "text-fuchsia-300"
-            : "";
+            ? "text-[#7b3c58]"
+            : "text-stone-850";
     nodes.push(
       <span key={`t${key}`} className={className}>
         {token}
@@ -83,11 +83,11 @@ function highlight(text: string): React.ReactNode[] {
 }
 
 const ROW: Record<LineKind, string> = {
-  meta: "bg-slate-900/80 text-slate-400",
-  hunk: "bg-sky-500/10 text-sky-300",
-  add: "bg-emerald-500/10 text-emerald-200",
-  remove: "bg-rose-500/10 text-rose-200",
-  context: "text-slate-300",
+  meta: "bg-[#f2eee3] text-stone-600 font-semibold",
+  hunk: "bg-[#eef4f7] text-[#28526e] font-semibold",
+  add: "bg-[#edf6ef] text-[#1c552e]",
+  remove: "bg-[#fdf0ed] text-[#912d18]",
+  context: "text-stone-800",
 };
 
 const MARKER: Record<LineKind, string> = {
@@ -105,25 +105,25 @@ export const DiffViewer: React.FC<{ diff: string; maxHeight?: string }> = ({
   const lines = parseDiff(diff);
   if (lines.length === 0) {
     return (
-      <div className="p-6 text-center text-xs text-slate-500">
+      <div className="p-6 text-center text-xs text-stone-500">
         No diff text is stored for this file.
       </div>
     );
   }
 
   return (
-    <div className="overflow-auto rounded-lg border border-slate-800 bg-slate-950/70" style={{ maxHeight }}>
+    <div className="overflow-auto rounded-lg border border-[#e5ded0] bg-[#faf7f0]" style={{ maxHeight }}>
       <table className="w-full border-collapse font-mono text-[12px] leading-5">
         <tbody>
           {lines.map((line, index) => (
             <tr key={index} className={ROW[line.kind]}>
-              <td className="w-10 select-none border-r border-slate-800/60 px-2 text-right text-[11px] text-slate-600">
+              <td className="w-10 select-none border-r border-[#e8dfcf] px-2 text-right text-[11px] text-stone-400 bg-[#f4eee2]/50">
                 {line.oldNumber ?? ""}
               </td>
-              <td className="w-10 select-none border-r border-slate-800/60 px-2 text-right text-[11px] text-slate-600">
+              <td className="w-10 select-none border-r border-[#e8dfcf] px-2 text-right text-[11px] text-stone-400 bg-[#f4eee2]/50">
                 {line.newNumber ?? ""}
               </td>
-              <td className="w-4 select-none pl-2 text-slate-500">{MARKER[line.kind]}</td>
+              <td className="w-4 select-none pl-2 text-stone-400">{MARKER[line.kind]}</td>
               <td className="whitespace-pre-wrap break-all py-px pr-4">
                 {line.kind === "add" || line.kind === "remove" || line.kind === "context"
                   ? highlight(line.text.slice(1))
